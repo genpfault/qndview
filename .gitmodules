@@ -1,0 +1,3 @@
+[submodule "imageresampler"]
+	path = imageresampler
+	url = git://github.com/genpfault/imageresampler.git

@@ -245,6 +245,11 @@ wxPoint wxImagePanel::ClampPosition( const wxPoint& newPos )
 
 void wxImagePanel::OnKeyUp( wxKeyEvent& event )
 {
+    if( NULL == mImage )
+    {
+        return;
+    }
+
     switch( event.GetKeyCode() )
     {
         case WXK_ADD:
@@ -254,6 +259,16 @@ void wxImagePanel::OnKeyUp( wxKeyEvent& event )
         case WXK_SUBTRACT:
         case WXK_NUMPAD_SUBTRACT:
             SetScale( mScale / 1.1 );
+            break;
+        case WXK_NUMPAD_MULTIPLY:
+            {
+                const int iMax = max( mImage->GetWidth(), mImage->GetHeight() );
+                const int wMin = min( GetSize().x, GetSize().y );
+                SetScale( wMin / (double)iMax );
+            }
+            break;
+        case WXK_NUMPAD_DIVIDE:
+            SetScale( 1.0 );
             break;
         default:
             break;

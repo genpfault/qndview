@@ -73,10 +73,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="imageresampler\resampler.cpp" />
+    <ClCompile Include="ImagePanel.cpp" />
+    <ClCompile Include="LinearImage.cpp" />
     <ClCompile Include="scroll.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imageresampler\resampler.h" />
+    <ClInclude Include="ImagePanel.h" />
+    <ClInclude Include="LinearImage.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

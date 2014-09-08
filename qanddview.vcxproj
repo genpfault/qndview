@@ -75,7 +75,7 @@
     <ClCompile Include="imageresampler\resampler.cpp" />
     <ClCompile Include="ImagePanel.cpp" />
     <ClCompile Include="LinearImage.cpp" />
-    <ClCompile Include="scroll.cpp" />
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imageresampler\resampler.h" />

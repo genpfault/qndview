@@ -5,18 +5,6 @@
 using namespace std;
 
 
-wxBitmapPtr ToBitmap( const LinearImage& image )
-{
-    vector< unsigned char > color, alpha;
-    image.GetSrgb( color, alpha );
-    return wxBitmapPtr( new wxBitmap( 
-        alpha.empty()
-        ? wxImage( image.GetWidth(), image.GetHeight(), &color[0], true )
-        : wxImage( image.GetWidth(), image.GetHeight(), &color[0], &alpha[0], true )
-        ) );
-}
-
-
 vector< wxRect > GetCoverage( const wxRect& viewport, const wxRect& canvas, const wxSize& gridSize )
 {
     const wxRect clippedViewport( canvas.Intersect( viewport ) );
@@ -84,59 +72,12 @@ wxPoint ClampPosition( const wxRect& viewport, const wxRect& extent )
 }
 
 
-wxBitmapPtr GetScaledSubrect( const LinearImage& src, auto_ptr< Resampler > resamplers[ 4 ], const wxRect& rect )
-{
-    LinearImage dst( rect.GetWidth(), rect.GetHeight(), src.GetNumChannels() == 4 ? true : false, NULL );
-
-    for( size_t c = 0; c < src.GetNumChannels(); ++c )
-    {
-        resamplers[ c ]->StartResample
-            (
-            rect.x, rect.y,
-            rect.GetWidth(), rect.GetHeight()
-            );
-    }
-
-    size_t dstY = 0;
-    for( size_t y = 0; y < src.GetHeight(); ++y )
-    {
-        for( size_t c = 0; c < src.GetNumChannels(); ++c )
-        {
-            resamplers[ c ]->PutLine( src.GetRow( c, y ) );
-        }
-
-        while( true )
-        {
-            bool missedLine = false;
-            for( size_t c = 0; c < src.GetNumChannels(); ++c )
-            {
-                const float* line = resamplers[ c ]->GetLine();
-                if( NULL == line )
-                {
-                    missedLine = true;
-                    break;
-                }
-
-                copy( line, line + dst.GetWidth(), dst.GetRow( c, dstY ) );
-            }
-
-            if( missedLine )
-            {
-                break;
-            }
-
-            dstY++;
-        }
-    }
-
-    return ToBitmap( dst );
-}
-
 
 wxImagePanel::wxImagePanel( wxWindow* parent )
     : wxWindow( parent, wxID_ANY )
     , mPosition( 0, 0 )
     , mScale( 1.0 )
+    , mImageFactory( this )
 {
     // for wxAutoBufferedPaintDC
     SetBackgroundStyle( wxBG_STYLE_PAINT );
@@ -151,6 +92,7 @@ wxImagePanel::wxImagePanel( wxWindow* parent )
     Bind( wxEVT_RIGHT_DOWN  , &wxImagePanel::OnButtonDown   , this );
     Bind( wxEVT_MIDDLE_DOWN , &wxImagePanel::OnButtonDown   , this );
     Bind( wxEVT_MOTION      , &wxImagePanel::OnMotion       , this );
+    Bind( wxEVT_THREAD      , &wxImagePanel::OnThread       , this );
 }
 
 
@@ -252,14 +194,17 @@ void wxImagePanel::OnKeyUp( wxKeyEvent& event )
 
     switch( event.GetKeyCode() )
     {
+        case '=':
         case WXK_ADD:
         case WXK_NUMPAD_ADD:
             SetScale( mScale * 1.1 );
             break;
+        case '-':
         case WXK_SUBTRACT:
         case WXK_NUMPAD_SUBTRACT:
             SetScale( mScale / 1.1 );
             break;
+        case 'X':
         case WXK_NUMPAD_MULTIPLY:
             {
                 const int iMax = max( mImage->GetWidth(), mImage->GetHeight() );
@@ -267,6 +212,7 @@ void wxImagePanel::OnKeyUp( wxKeyEvent& event )
                 SetScale( wMin / (double)iMax );
             }
             break;
+        case 'Z':
         case WXK_NUMPAD_DIVIDE:
             SetScale( 1.0 );
             break;
@@ -310,7 +256,12 @@ void wxImagePanel::OnPaint( wxPaintEvent& event )
         wxRect rect( upd.GetRect() );
         rect.SetPosition( rect.GetPosition() + mPosition );
 
-        const vector< wxRect > ret = GetCoverage( rect, scaledRect, gridSize );
+        const vector< wxRect > ret = GetCoverage
+            (
+            rect.Inflate( 1.1, 1.1 ),
+            scaledRect,
+            gridSize
+            );
         covered.insert( ret.begin(), ret.end() );
     }
         
@@ -319,17 +270,25 @@ void wxImagePanel::OnPaint( wxPaintEvent& event )
         map< wxRect, wxBitmapPtr >::iterator it = mBitmapCache.find( rect );
         if( mBitmapCache.end() == it )
         {
-            it = mBitmapCache.insert( make_pair( rect, GetScaledSubrect( *mImage, mResamplers, rect ) ) ).first;
+            if( mQueuedRects.end() == mQueuedRects.find( rect ) )
+            {
+                mQueuedRects.insert( rect );
+                mImageFactory.AddRect( rect );
+            }
         }
-
-        dc.DrawBitmap( *(it->second), rect.GetPosition() );
+        else
+        {
+            dc.DrawBitmap( *(it->second), rect.GetPosition() );
+        }
     }
 }
 
 
-void wxImagePanel::SetImage( const LinearImage* newImage )
+void wxImagePanel::SetImage( wxSharedPtr< LinearImage > newImage )
 {
     mImage = newImage;
+    mQueuedRects.clear();
+    mImageFactory.SetImage( mImage, mScale );
     SetScale( mScale );
     mPosition = ClampPosition( mPosition );
 }
@@ -349,14 +308,31 @@ void wxImagePanel::SetScale( const double newScale )
         return;
     }
 
-    // regenerate resamplers
-    mContribLists.reset( new Resampler::ContribLists
-        (
-        mImage->GetWidth(), mImage->GetHeight(),
-        mImage->GetWidth() * mScale, mImage->GetHeight() * mScale
-        ) );
-    for( size_t i = 0; i < 4; ++i )
+    mQueuedRects.clear();
+    mImageFactory.SetScale( mScale );
+}
+
+
+void wxImagePanel::OnThread( wxThreadEvent& event )
+{
+    wxRect rect;
+    SrgbImagePtr image;
+    while( mImageFactory.GetImage( rect, image ) )
     {
-        mResamplers[ i ].reset( new Resampler( *mContribLists ) );
+        wxBitmapPtr bmp( new wxBitmap( 
+            image->mAlpha.empty()
+            ? wxImage( rect.GetWidth(), rect.GetHeight(), &image->mColor[0], true )
+            : wxImage( rect.GetWidth(), rect.GetHeight(), &image->mColor[0], &image->mAlpha[0], true )
+            ) );
+        mBitmapCache.insert( make_pair( rect, bmp ) );
+
+        mQueuedRects.erase( rect );
+
+        const wxRect target( rect.GetPosition() - mPosition, rect.GetSize() );
+        const wxRect clipped( GetRect().Intersect( target ) );
+        RefreshRect( clipped, true );
     }
+
+    // todo: needed/wanted?
+    //Update();
 }

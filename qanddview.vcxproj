@@ -76,11 +76,13 @@
     <ClCompile Include="ImagePanel.cpp" />
     <ClCompile Include="LinearImage.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="ScaledImageFactory.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imageresampler\resampler.h" />
     <ClInclude Include="ImagePanel.h" />
     <ClInclude Include="LinearImage.h" />
+    <ClInclude Include="ScaledImageFactory.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

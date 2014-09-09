@@ -2,20 +2,22 @@
 #define IMAGEPANEL_H
 
 #include <wx/wx.h>
+#include <wx/msgqueue.h>
+
 #include <memory>
 #include <map>
+#include <set>
 
-#include "imageresampler/resampler.h"
 #include "LinearImage.h"
+#include "ScaledImageFactory.h"
 
-typedef wxSharedPtr< wxBitmap > wxBitmapPtr;
 
 class wxImagePanel : public wxWindow
 {
 public:
     wxImagePanel( wxWindow* parent );
 
-    void SetImage( const LinearImage* newImage );
+    void SetImage( wxSharedPtr< LinearImage > newImage );
     void SetScale( const double newScale );
 
 private:
@@ -26,16 +28,13 @@ private:
     void OnKeyDown( wxKeyEvent& event );
     void OnKeyUp( wxKeyEvent& event );
     void OnPaint( wxPaintEvent& event );
+    void OnThread( wxThreadEvent& event );
     wxPoint ClampPosition( const wxPoint& newPos );
     void ScrollToPosition( const wxPoint& newPos );
 
     static const size_t TILE_SIZE = 512;   // pixels
 
-    LinearImage const* mImage;
-
-    // resampler state
-    std::auto_ptr< Resampler::ContribLists > mContribLists;
-    std::auto_ptr< Resampler > mResamplers[ 4 ];
+    wxSharedPtr< LinearImage > mImage;
 
     // (ab)use std::pair<>'s operator<() to compare wxRects
     struct wxRectCmp
@@ -47,6 +46,7 @@ private:
             return ( leftPair < rightPair );
         }
     };
+    typedef wxSharedPtr< wxBitmap > wxBitmapPtr;
     std::map< wxRect, wxBitmapPtr, wxRectCmp > mBitmapCache;
 
     // position of the top-left of the viewport
@@ -55,6 +55,9 @@ private:
 
     wxPoint mLeftPositionStart;
     wxPoint mLeftMouseStart;
+
+    ScaledImageFactory mImageFactory;
+    std::set< wxRect, wxRectCmp > mQueuedRects;
 };
 
 #endif

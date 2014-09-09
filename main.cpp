@@ -57,15 +57,15 @@ public:
         }
         //mLinearImage
 
-        mLinearImage.reset( new LinearImage
+        mLinearImage = new LinearImage
             (
             mImage.GetWidth(),
             mImage.GetHeight(),
             mImage.HasAlpha(),
             mImage.GetData()
-            ) );
+            );
 
-        mImagePanel->SetImage( mLinearImage.get() );
+        mImagePanel->SetImage( mLinearImage );
     }
 
     // event handlers (these functions should _not_ be virtual)
@@ -97,7 +97,7 @@ public:
 private:
     wxImagePanel* mImagePanel;
     wxImage mImage;
-    auto_ptr< LinearImage > mLinearImage;
+    wxSharedPtr< LinearImage > mLinearImage;
 
     // any class wishing to process wxWidgets events must use this macro
     wxDECLARE_EVENT_TABLE();

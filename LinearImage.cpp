@@ -1,5 +1,5 @@
 #include "LinearImage.h"
-
+#include <cmath>
 
 LinearImage::LinearImage( const size_t width, const size_t height, const bool hasAlpha, const unsigned char* data, const float gamma )
     : mWidth( width ), mHeight( height )

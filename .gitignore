@@ -92,3 +92,9 @@ packages/
 
 #Test files
 *.testsettings
+
+#Makefile dirt
+.depend
+
+#Binary
+qanddview

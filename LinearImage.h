@@ -1,6 +1,7 @@
 #ifndef LINEARIMAGE_H
 #define LINEARIMAGE_H
 
+#include <cstddef>
 #include <vector>
 
 class LinearImage

@@ -7,7 +7,7 @@
 class LinearImage
 {
 public:
-    LinearImage( const size_t width, const size_t height, const bool hasAlpha, const unsigned char* data, const float gamma = 2.2f );
+    LinearImage( const size_t width, const size_t height, const unsigned char* data, const unsigned char* alpha, const float gamma = 2.2f );
 
     void GetSrgb( std::vector< unsigned char >& color, std::vector< unsigned char >& alpha ) const;
     const float* GetRow( const size_t channel, const size_t row ) const;

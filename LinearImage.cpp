@@ -1,13 +1,13 @@
 #include "LinearImage.h"
 #include <cmath>
 
-LinearImage::LinearImage( const size_t width, const size_t height, const bool hasAlpha, const unsigned char* data, const float gamma )
+LinearImage::LinearImage( const size_t width, const size_t height, const unsigned char* data, const unsigned char* alpha, const float gamma )
     : mWidth( width ), mHeight( height )
 {
     InitTables( gamma );
 
     // allocate channels
-    mChannels.resize( hasAlpha ? 4 : 3 );
+    mChannels.resize( alpha != NULL ? 4 : 3 );
     for( Channel& channel : mChannels )
     {
         channel.resize( mWidth * mHeight );
@@ -19,21 +19,20 @@ LinearImage::LinearImage( const size_t width, const size_t height, const bool ha
     }
 
     // convert to linear color
-    const size_t srcPitch = mWidth * 3;
-    const unsigned char* srcBytes = data;
     for( size_t y = 0; y < (size_t)mHeight; ++y )
     {
         const size_t dstRow = y * mWidth;
-        const unsigned char* srcRow = &srcBytes[ y * srcPitch ];
+        const unsigned char* srcRow = &data[ y * mWidth * 3];
+        const unsigned char* srcAlphaRow = &alpha[ y * mWidth * 1 ];
         for( size_t x = 0; x < (size_t)mWidth; ++x )
         {
             for( size_t c = 0; c < 3; ++c )
             {
                 mChannels[ c ][ dstRow + x ] = mSrgbToLinear[ srcRow[ x * 3 + c ] ];
             }
-            if( hasAlpha )
+            if( alpha != NULL )
             {
-                mChannels[ 3 ][ dstRow + x ] = srcRow[ x * 3 + 3 ] * ( 1.0f / 255.0f );
+                mChannels[ 3 ][ dstRow + x ] = srcAlphaRow[ x ] * ( 1.0f / 255.0f );
             }
         }
     }

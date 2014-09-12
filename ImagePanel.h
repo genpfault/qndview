@@ -58,6 +58,8 @@ private:
 
     ScaledImageFactory mImageFactory;
     std::set< wxRect, wxRectCmp > mQueuedRects;
+
+    wxBitmap mStipple;
 };
 
 #endif

@@ -93,6 +93,8 @@ wxImagePanel::wxImagePanel( wxWindow* parent )
     Bind( wxEVT_MIDDLE_DOWN , &wxImagePanel::OnButtonDown   , this );
     Bind( wxEVT_MOTION      , &wxImagePanel::OnMotion       , this );
     Bind( wxEVT_THREAD      , &wxImagePanel::OnThread       , this );
+
+    mStipple = wxBitmap( wxImage( "background.png" ) );
 }
 
 
@@ -264,7 +266,10 @@ void wxImagePanel::OnPaint( wxPaintEvent& event )
             );
         covered.insert( ret.begin(), ret.end() );
     }
-        
+
+    dc.SetBrush( wxBrush( mStipple ) );
+    dc.SetPen( *wxTRANSPARENT_PEN );
+
     for( const wxRect& rect : covered )
     {
         map< wxRect, wxBitmapPtr >::iterator it = mBitmapCache.find( rect );
@@ -278,7 +283,9 @@ void wxImagePanel::OnPaint( wxPaintEvent& event )
         }
         else
         {
-            dc.DrawBitmap( *(it->second), rect.GetPosition() );
+            const wxBitmap& bitmap = *(it->second); 
+            dc.DrawRectangle( rect );
+            dc.DrawBitmap( bitmap, rect.GetPosition() );
         }
     }
 }
@@ -319,11 +326,15 @@ void wxImagePanel::OnThread( wxThreadEvent& event )
     SrgbImagePtr image;
     while( mImageFactory.GetImage( rect, image ) )
     {
-        wxBitmapPtr bmp( new wxBitmap( 
-            image->mAlpha.empty()
-            ? wxImage( rect.GetWidth(), rect.GetHeight(), &image->mColor[0], true )
-            : wxImage( rect.GetWidth(), rect.GetHeight(), &image->mColor[0], &image->mAlpha[0], true )
-            ) );
+        wxBitmapPtr bmp
+            ( 
+            new wxBitmap
+                ( 
+                image->mAlpha.empty()
+                ? wxImage( rect.GetWidth(), rect.GetHeight(), &image->mColor[0], true )
+                : wxImage( rect.GetWidth(), rect.GetHeight(), &image->mColor[0], &image->mAlpha[0], true )
+                ) 
+            );
         mBitmapCache.insert( make_pair( rect, bmp ) );
 
         mQueuedRects.erase( rect );

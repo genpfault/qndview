@@ -95,7 +95,13 @@ bool ScaledImageFactory::GetImage( wxRect& rect, SrgbImagePtr& image )
 
 SrgbImagePtr GetScaledSubrect( const LinearImage& src, wxSharedPtr< Resampler > resamplers[ 4 ], const wxRect& rect )
 {
-    LinearImage dst( rect.GetWidth(), rect.GetHeight(), src.GetNumChannels() == 4 ? true : false, NULL );
+    LinearImage dst
+        (
+        rect.GetWidth(),
+        rect.GetHeight(),
+        NULL,
+        ( src.GetNumChannels() == 4 ? (unsigned char*)1 : NULL )
+        );
 
     for( size_t c = 0; c < src.GetNumChannels(); ++c )
     {

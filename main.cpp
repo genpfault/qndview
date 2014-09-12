@@ -55,14 +55,13 @@ public:
             wxLogNull logNo;
             success = mImage.LoadFile( fileName );
         }
-        //mLinearImage
 
         mLinearImage = new LinearImage
             (
             mImage.GetWidth(),
             mImage.GetHeight(),
-            mImage.HasAlpha(),
-            mImage.GetData()
+            mImage.GetData(),
+            mImage.GetAlpha()
             );
 
         mImagePanel->SetImage( mLinearImage );

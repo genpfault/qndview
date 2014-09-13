@@ -69,7 +69,7 @@ bool ScaledImageFactory::AddRect( const wxRect& rect )
 
     wxMessageQueueError err;
     err = JobQueue.Post( JobItem( rect, mCurrentCtx ) );
-    return( wxTHREAD_NO_ERROR == err );
+    return( wxMSGQUEUE_NO_ERROR == err );
 }
 
 bool ScaledImageFactory::GetImage( wxRect& rect, SrgbImagePtr& image )

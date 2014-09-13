@@ -137,7 +137,7 @@ void wxImagePanel::OnMotion( wxMouseEvent& event )
 void wxImagePanel::OnIdle( wxIdleEvent & )
 {
     wxPoint newPos( mPosition );
-    const int step = 1;
+    const int step = wxGetKeyState( WXK_CONTROL ) ? 10 : 1;
     if( wxGetKeyState( WXK_LEFT  ) )    newPos += step * wxPoint( -1,  0 );
     if( wxGetKeyState( WXK_RIGHT ) )    newPos += step * wxPoint(  1,  0 );
     if( wxGetKeyState( WXK_UP    ) )    newPos += step * wxPoint(  0, -1 );

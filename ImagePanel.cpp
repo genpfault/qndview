@@ -75,10 +75,10 @@ wxPoint ClampPosition( const wxRect& viewport, const wxRect& extent )
 
 wxImagePanel::wxImagePanel( wxWindow* parent )
     : wxWindow( parent, wxID_ANY )
+    , mBitmapCache( 128 )   // ~135MB for 128 512x512x4 byte tiles
     , mPosition( 0, 0 )
     , mScale( 1.0 )
     , mImageFactory( this )
-    , mBitmapCache( 128 )   // ~135MB for 128 512x512x4 byte tiles
 {
     // for wxAutoBufferedPaintDC
     SetBackgroundStyle( wxBG_STYLE_PAINT );

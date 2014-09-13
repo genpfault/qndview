@@ -82,6 +82,7 @@
     <ClInclude Include="imageresampler\resampler.h" />
     <ClInclude Include="ImagePanel.h" />
     <ClInclude Include="LinearImage.h" />
+    <ClInclude Include="LruCache.h" />
     <ClInclude Include="ScaledImageFactory.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

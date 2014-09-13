@@ -44,5 +44,8 @@
     <ClInclude Include="ScaledImageFactory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="LruCache.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

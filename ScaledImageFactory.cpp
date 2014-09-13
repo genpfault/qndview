@@ -53,7 +53,8 @@ void ScaledImageFactory::SetScale( double newScale )
         mCurrentCtx.mImage->GetWidth(), 
         mCurrentCtx.mImage->GetHeight(),
         mCurrentCtx.mImage->GetWidth() * newScale,
-        mCurrentCtx.mImage->GetHeight() * newScale
+        mCurrentCtx.mImage->GetHeight() * newScale,
+        "tent"
         );
     for( size_t i = 0; i < 4; ++i )
     {

@@ -10,6 +10,7 @@
 
 #include "LinearImage.h"
 #include "ScaledImageFactory.h"
+#include "LruCache.h"
 
 
 class wxImagePanel : public wxWindow
@@ -47,7 +48,7 @@ private:
         }
     };
     typedef wxSharedPtr< wxBitmap > wxBitmapPtr;
-    std::map< wxRect, wxBitmapPtr, wxRectCmp > mBitmapCache;
+    LruCache< wxRect, wxBitmapPtr, wxRectCmp > mBitmapCache;
 
     // position of the top-left of the viewport
     wxPoint mPosition;
@@ -60,6 +61,7 @@ private:
     std::set< wxRect, wxRectCmp > mQueuedRects;
 
     wxBitmap mStipple;
+
 };
 
 #endif

@@ -78,6 +78,7 @@ wxImagePanel::wxImagePanel( wxWindow* parent )
     , mPosition( 0, 0 )
     , mScale( 1.0 )
     , mImageFactory( this )
+    , mBitmapCache( 128 )   // ~135MB for 128 512x512x4 byte tiles
 {
     // for wxAutoBufferedPaintDC
     SetBackgroundStyle( wxBG_STYLE_PAINT );
@@ -272,8 +273,8 @@ void wxImagePanel::OnPaint( wxPaintEvent& event )
 
     for( const wxRect& rect : covered )
     {
-        map< wxRect, wxBitmapPtr >::iterator it = mBitmapCache.find( rect );
-        if( mBitmapCache.end() == it )
+        wxBitmapPtr bmpPtr;
+        if( !mBitmapCache.get( bmpPtr, rect ) )
         {
             if( mQueuedRects.end() == mQueuedRects.find( rect ) )
             {
@@ -283,9 +284,8 @@ void wxImagePanel::OnPaint( wxPaintEvent& event )
         }
         else
         {
-            const wxBitmap& bitmap = *(it->second); 
             dc.DrawRectangle( rect );
-            dc.DrawBitmap( bitmap, rect.GetPosition() );
+            dc.DrawBitmap( *bmpPtr, rect.GetPosition() );
         }
     }
 }
@@ -335,7 +335,7 @@ void wxImagePanel::OnThread( wxThreadEvent& event )
                 : wxImage( rect.GetWidth(), rect.GetHeight(), &image->mColor[0], &image->mAlpha[0], true )
                 ) 
             );
-        mBitmapCache.insert( make_pair( rect, bmp ) );
+        mBitmapCache.insert( rect, bmp );
 
         mQueuedRects.erase( rect );
 

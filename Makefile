@@ -12,8 +12,8 @@ LIBS = \
 
 CXXSOURCES = ImagePanel.cpp  LinearImage.cpp  main.cpp  ScaledImageFactory.cpp imageresampler/resampler.cpp
 CXXOBJECTS = $(CXXSOURCES:.cpp=.o)
-CXXFLAGS = $(INCLUDEDIRS) -std=c++0x
-CXX = g++ -Wall
+CXXFLAGS = $(INCLUDEDIRS) -std=c++0x -Wall -Wextra
+CXX = g++
 
 LDFLAGS = $(LIBDIRS) $(LIBS)
 

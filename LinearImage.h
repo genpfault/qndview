@@ -12,9 +12,9 @@ public:
     void GetSrgb( std::vector< unsigned char >& color, std::vector< unsigned char >& alpha ) const;
     const float* GetRow( const size_t channel, const size_t row ) const;
     float* GetRow( const size_t channel, const size_t row );
-    const size_t GetWidth()     const { return mWidth;  }
-    const size_t GetHeight()    const { return mHeight; }
-    const size_t GetNumChannels() const { return mChannels.size(); }
+    size_t GetWidth()     const { return mWidth;  }
+    size_t GetHeight()    const { return mHeight; }
+    size_t GetNumChannels() const { return mChannels.size(); }
 
 private:
     void InitTables( const float gamma );

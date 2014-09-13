@@ -2,8 +2,7 @@ PROGRAM = qanddview
 
 INCLUDEDIRS = \
 	$(shell wx-config --cflags)\
-	$(shell pkg-config gtk+-2.0 --cflags)\
-	imageresampler
+	$(shell pkg-config gtk+-2.0 --cflags)
 
 LIBDIRS = \
 	-L/usr/X11R6/lib
@@ -14,7 +13,7 @@ LIBS = \
 CXXSOURCES = ImagePanel.cpp  LinearImage.cpp  main.cpp  ScaledImageFactory.cpp imageresampler/resampler.cpp
 CXXOBJECTS = $(CXXSOURCES:.cpp=.o)
 CXXFLAGS = $(INCLUDEDIRS) -std=c++0x
-CXX = g++
+CXX = g++ -Wall
 
 LDFLAGS = $(LIBDIRS) $(LIBS)
 

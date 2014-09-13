@@ -4,9 +4,10 @@
 #include <cassert>
 #include <list>
 #include <map>
+#include <functional>
 
 // adapted from http://stackoverflow.com/a/25093143/44729
-template< typename K, typename V, class Comp = less< K > >
+template< typename K, typename V, class Comp = std::less< K > >
 class LruCache
 {
 public:

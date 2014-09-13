@@ -2,8 +2,7 @@ PROGRAM = qanddview
 
 INCLUDEDIRS = \
 	$(shell wx-config --cflags)\
-	$(shell pkg-config gtk+-2.0 --cflags)\
-	imageresampler
+	$(shell pkg-config gtk+-2.0 --cflags)
 
 LIBDIRS = \
 	-L/usr/X11R6/lib

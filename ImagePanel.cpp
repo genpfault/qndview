@@ -134,7 +134,7 @@ void wxImagePanel::OnMotion( wxMouseEvent& event )
 }
 
 
-void wxImagePanel::OnIdle( wxIdleEvent& event )
+void wxImagePanel::OnIdle( wxIdleEvent & )
 {
     wxPoint newPos( mPosition );
     const int step = 1;
@@ -235,7 +235,7 @@ void wxImagePanel::ScrollToPosition( const wxPoint& newPos )
 }
 
 
-void wxImagePanel::OnPaint( wxPaintEvent& event )
+void wxImagePanel::OnPaint( wxPaintEvent& )
 {
     wxPaintDC dc(this);
     //wxAutoBufferedPaintDC dc( this );
@@ -321,7 +321,7 @@ void wxImagePanel::SetScale( const double newScale )
 }
 
 
-void wxImagePanel::OnThread( wxThreadEvent& event )
+void wxImagePanel::OnThread( wxThreadEvent& )
 {
     wxRect rect;
     SrgbImagePtr image;

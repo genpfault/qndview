@@ -169,6 +169,7 @@ void wxImagePanel::OnKeyDown( wxKeyEvent& event )
         default:
             break;
     }
+    event.Skip();
 }
 
 

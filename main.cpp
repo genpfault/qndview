@@ -65,6 +65,23 @@ public:
             );
 
         mImagePanel->SetImage( mLinearImage );
+
+        Bind( wxEVT_CHAR_HOOK, &MyFrame::OnCharHook, this );
+    }
+
+    void OnCharHook( wxKeyEvent& event )
+    {
+        switch( event.GetKeyCode() )
+        {
+            case 'F':
+                // toggle fullscreen
+                ShowFullScreen( !IsFullScreen() );
+                return;
+                break;
+            default:
+                break;
+        }
+        event.Skip();
     }
 
     // event handlers (these functions should _not_ be virtual)

@@ -132,10 +132,8 @@ ScaledImageFactory::ScaledImageFactory( wxEvtHandler* eventSink, int id )
     , mEventId( id )
 {
     size_t numThreads = wxThread::GetCPUCount();
-    if( numThreads > 1 )
-    {
-        numThreads--;
-    }
+    if( numThreads <= 0 )   numThreads = 1;
+    if( numThreads > 1 )    numThreads--;
 
     for( size_t i = 0; i < numThreads; ++i )
     {

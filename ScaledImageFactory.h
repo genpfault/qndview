@@ -6,6 +6,7 @@
 
 #include <utility>
 #include <vector>
+#include <list>
 
 #include "imageresampler/resampler.h"
 
@@ -22,7 +23,9 @@ struct SrgbImage
 typedef wxSharedPtr< SrgbImage > SrgbImagePtr;
 
 
-class ScaledImageFactory : public wxThreadHelper
+class WorkerThread;
+
+class ScaledImageFactory
 {
 public:
     ScaledImageFactory( wxEvtHandler* eventSink, int id = wxID_ANY );
@@ -33,8 +36,7 @@ public:
     bool GetImage( wxRect& rect, SrgbImagePtr& image );
 
 private:
-    // threadland
-    virtual wxThread::ExitCode Entry();
+    friend WorkerThread;
 
     wxEvtHandler* mEventSink;
     int mEventId;
@@ -44,12 +46,12 @@ private:
         unsigned int mGeneration;
         LinearImagePtr mImage;
         wxSharedPtr< Resampler::ContribLists > mContribLists;
-        wxSharedPtr< Resampler > mResamplers[ 4 ];
     };
     Context mCurrentCtx;
 
     typedef std::pair< wxRect, Context > JobItem;
-    wxMessageQueue< JobItem > JobQueue;
+    typedef wxMessageQueue< JobItem > JobQueueType;
+    JobQueueType mJobQueue;
 
     struct ResultItem
     {
@@ -57,7 +59,10 @@ private:
         wxRect mRect;
         SrgbImagePtr mImage;
     };
-    wxMessageQueue< ResultItem > ResultQueue;
+    typedef wxMessageQueue< ResultItem > ResultQueueType;
+    ResultQueueType mResultQueue;
+
+    std::list< wxThread* > mThreads;
 };
 
 #endif

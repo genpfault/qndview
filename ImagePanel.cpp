@@ -297,7 +297,6 @@ void wxImagePanel::SetImage( wxSharedPtr< LinearImage > newImage )
     mImage = newImage;
     mQueuedRects.clear();
     mImageFactory.SetImage( mImage, mScale );
-    SetScale( mScale );
     mPosition = ClampPosition( mPosition );
 }
 

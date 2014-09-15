@@ -7,94 +7,8 @@
 using namespace std;
 
 
-ScaledImageFactory::ScaledImageFactory( wxEvtHandler* eventSink, int id )
-    : mEventSink( eventSink )
-    , mEventId( id )
-{
-    if( CreateThread( wxTHREAD_JOINABLE ) != wxTHREAD_NO_ERROR )
-        throw std::runtime_error( "Could not create the worker thread!" );
 
-    if( GetThread()->Run() != wxTHREAD_NO_ERROR )
-        throw std::runtime_error( "Could not run the worker thread!" );
-
-    mCurrentCtx.mGeneration = 0;
-}
-
-ScaledImageFactory::~ScaledImageFactory()
-{
-    // clear job queue and send down a "kill" job
-    JobQueue.Clear();
-    JobQueue.Post( JobItem( wxRect(), Context() ) );
-    if( GetThread() && GetThread()->IsRunning() )
-        GetThread()->Wait();
-}
-
-void ScaledImageFactory::SetImage( LinearImagePtr& newImage, double scale )
-{
-    JobQueue.Clear();
-    const unsigned int nextGen = mCurrentCtx.mGeneration + 1;
-    mCurrentCtx.mGeneration = nextGen;
-    mCurrentCtx.mImage = newImage;
-    SetScale( scale );
-}
-
-void ScaledImageFactory::SetScale( double newScale )
-{
-    if( NULL == mCurrentCtx.mImage )
-        throw std::runtime_error( "Image not set!" );
-
-    JobQueue.Clear();
-    const unsigned int nextGen = mCurrentCtx.mGeneration + 1;
-    mCurrentCtx.mGeneration = nextGen;
-
-    // regenerate resamplers
-    mCurrentCtx.mContribLists = new Resampler::ContribLists
-        (
-        mCurrentCtx.mImage->GetWidth(), 
-        mCurrentCtx.mImage->GetHeight(),
-        mCurrentCtx.mImage->GetWidth() * newScale,
-        mCurrentCtx.mImage->GetHeight() * newScale,
-        "tent"
-        );
-    for( size_t i = 0; i < 4; ++i )
-    {
-        mCurrentCtx.mResamplers[ i ] = new Resampler( *mCurrentCtx.mContribLists );
-    }
-}
-
-bool ScaledImageFactory::AddRect( const wxRect& rect )
-{
-    if( NULL == mCurrentCtx.mImage )
-        throw std::runtime_error( "Image not set!" );
-
-    wxMessageQueueError err;
-    err = JobQueue.Post( JobItem( rect, mCurrentCtx ) );
-    return( wxMSGQUEUE_NO_ERROR == err );
-}
-
-bool ScaledImageFactory::GetImage( wxRect& rect, SrgbImagePtr& image )
-{
-    ResultItem item;
-    wxMessageQueueError err;
-    while( true )
-    {
-        err = ResultQueue.ReceiveTimeout( 0, item );
-        if( wxMSGQUEUE_TIMEOUT == err )
-            return false;
-        if( wxMSGQUEUE_MISC_ERROR == err )
-            throw std::runtime_error( "ResultQueue misc error!" );
-        if( item.mGeneration != mCurrentCtx.mGeneration )
-            continue;
-        break;
-    }
-
-    rect = item.mRect;
-    image = item.mImage;
-    return true;
-}
-
-
-SrgbImagePtr GetScaledSubrect( const LinearImage& src, wxSharedPtr< Resampler > resamplers[ 4 ], const wxRect& rect )
+SrgbImagePtr GetScaledSubrect( const LinearImage& src, auto_ptr< Resampler > resamplers[ 4 ], const wxRect& rect )
 {
     LinearImage dst
         (
@@ -151,31 +65,170 @@ SrgbImagePtr GetScaledSubrect( const LinearImage& src, wxSharedPtr< Resampler > 
 }
 
 
-// threadland
-wxThread::ExitCode ScaledImageFactory::Entry()
+class WorkerThread : public wxThread
 {
-    JobItem job;
-    while( wxMSGQUEUE_NO_ERROR == JobQueue.Receive( job ) )
+public:
+    WorkerThread
+        (
+        wxEvtHandler* eventSink,
+        int id,
+        ScaledImageFactory::JobQueueType& mJobQueue,
+        ScaledImageFactory::ResultQueueType& mResultQueue
+        )
+        : wxThread( wxTHREAD_JOINABLE )
+        , mEventSink( eventSink ), mEventId( id ), mJobQueue( mJobQueue ), mResultQueue( mResultQueue )
+    { }
+
+    virtual ExitCode Entry()
     {
-        if( NULL == job.second.mImage || GetThread()->TestDestroy() )
-            break;
+        wxSharedPtr< Resampler::ContribLists > curContribLists;
+        auto_ptr< Resampler > resamplers[ 4 ];
 
-        const wxRect& rect = job.first;
-        Context& ctx = job.second;
+        ScaledImageFactory::JobItem job;
+        while( wxMSGQUEUE_NO_ERROR == mJobQueue.Receive( job ) )
+        {
+            if( NULL == job.second.mImage || TestDestroy() )
+                break;
 
-        ResultItem result;
-        result.mGeneration = ctx.mGeneration;
-        result.mRect = rect;
-        result.mImage = GetScaledSubrect
-            (
-            *ctx.mImage,
-            ctx.mResamplers,
-            rect
-            );
-        ResultQueue.Post( result );
+            const wxRect& rect = job.first;
+            ScaledImageFactory::Context& ctx = job.second;
 
-        wxQueueEvent( mEventSink, new wxThreadEvent( wxEVT_THREAD, mEventId ) );
+            if( curContribLists != ctx.mContribLists )
+            {
+                curContribLists = ctx.mContribLists;
+                for( size_t i = 0; i < 4; ++i )
+                {
+                    resamplers[ i ].reset( new Resampler( *curContribLists ) );
+                }
+            }
+
+            ScaledImageFactory::ResultItem result;
+            result.mGeneration = ctx.mGeneration;
+            result.mRect = rect;
+            result.mImage = GetScaledSubrect
+                (
+                *ctx.mImage,
+                resamplers,
+                rect
+                );
+            mResultQueue.Post( result );
+
+            wxQueueEvent( mEventSink, new wxThreadEvent( wxEVT_THREAD, mEventId ) );
+        }
+
+        return static_cast< wxThread::ExitCode >( 0 );
     }
 
-    return static_cast< wxThread::ExitCode >( 0 );
+private:
+    wxEvtHandler* mEventSink;
+    int mEventId;
+    ScaledImageFactory::JobQueueType& mJobQueue;
+    ScaledImageFactory::ResultQueueType& mResultQueue;
+};
+
+
+ScaledImageFactory::ScaledImageFactory( wxEvtHandler* eventSink, int id )
+    : mEventSink( eventSink )
+    , mEventId( id )
+{
+    size_t numThreads = wxThread::GetCPUCount();
+    if( numThreads > 1 )
+    {
+        numThreads--;
+    }
+
+    for( size_t i = 0; i < numThreads; ++i )
+    {
+        mThreads.push_back( new WorkerThread( eventSink, id, mJobQueue, mResultQueue ) );
+    }
+
+    for( wxThread*& thread : mThreads )
+    {
+        if( NULL == thread )
+            continue;
+
+        if( thread->Run() != wxTHREAD_NO_ERROR )
+        {
+            delete thread;
+            thread = NULL;
+        }
+    }
+
+    mCurrentCtx.mGeneration = 0;
+}
+
+ScaledImageFactory::~ScaledImageFactory()
+{
+    // clear job queue and send down "kill" jobs
+    mJobQueue.Clear();
+    for( size_t i = 0; i < mThreads.size(); ++i )
+    {
+        mJobQueue.Post( JobItem( wxRect(), Context() ) );
+    }
+
+    for( wxThread* thread : mThreads )
+    {
+        if( NULL == thread )
+            continue;
+
+        thread->Wait();
+        delete thread;
+    }
+}
+
+void ScaledImageFactory::SetImage( LinearImagePtr& newImage, double scale )
+{
+    mCurrentCtx.mGeneration++;
+    mJobQueue.Clear();
+    mCurrentCtx.mImage = newImage;
+    SetScale( scale );
+}
+
+void ScaledImageFactory::SetScale( double newScale )
+{
+    if( NULL == mCurrentCtx.mImage )
+        throw std::runtime_error( "Image not set!" );
+
+    mCurrentCtx.mGeneration++;
+    mJobQueue.Clear();
+
+    // regenerate contrib lists
+    mCurrentCtx.mContribLists = new Resampler::ContribLists
+        (
+        mCurrentCtx.mImage->GetWidth(), 
+        mCurrentCtx.mImage->GetHeight(),
+        mCurrentCtx.mImage->GetWidth() * newScale,
+        mCurrentCtx.mImage->GetHeight() * newScale
+        );
+}
+
+bool ScaledImageFactory::AddRect( const wxRect& rect )
+{
+    if( NULL == mCurrentCtx.mImage )
+        throw std::runtime_error( "Image not set!" );
+
+    wxMessageQueueError err;
+    err = mJobQueue.Post( JobItem( rect, mCurrentCtx ) );
+    return( wxMSGQUEUE_NO_ERROR == err );
+}
+
+bool ScaledImageFactory::GetImage( wxRect& rect, SrgbImagePtr& image )
+{
+    ResultItem item;
+    wxMessageQueueError err;
+    while( true )
+    {
+        err = mResultQueue.ReceiveTimeout( 0, item );
+        if( wxMSGQUEUE_TIMEOUT == err )
+            return false;
+        if( wxMSGQUEUE_MISC_ERROR == err )
+            throw std::runtime_error( "ResultQueue misc error!" );
+        if( item.mGeneration != mCurrentCtx.mGeneration )
+            continue;
+        break;
+    }
+
+    rect = item.mRect;
+    image = item.mImage;
+    return true;
 }

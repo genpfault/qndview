@@ -205,9 +205,7 @@ bool ScaledImageFactory::AddRect( const wxRect& rect )
     if( NULL == mCurrentCtx.mImage )
         throw std::runtime_error( "Image not set!" );
 
-    wxMessageQueueError err;
-    err = mJobQueue.Post( JobItem( rect, mCurrentCtx ) );
-    return( wxMSGQUEUE_NO_ERROR == err );
+    return( wxMSGQUEUE_NO_ERROR == mJobQueue.Post( JobItem( rect, mCurrentCtx ) ) );
 }
 
 bool ScaledImageFactory::GetImage( wxRect& rect, SrgbImagePtr& image )

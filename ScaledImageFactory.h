@@ -3,6 +3,7 @@
 
 #include <wx/wx.h>
 #include <wx/msgqueue.h>
+#include "wxMsgStack.h"
 
 #include <utility>
 #include <vector>
@@ -50,7 +51,7 @@ private:
     Context mCurrentCtx;
 
     typedef std::pair< wxRect, Context > JobItem;
-    typedef wxMessageQueue< JobItem > JobPoolType;
+    typedef wxMessageStack< JobItem > JobPoolType;
     JobPoolType mJobPool;
 
     struct ResultItem

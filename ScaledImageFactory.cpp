@@ -85,7 +85,7 @@ public:
         auto_ptr< Resampler > resamplers[ 4 ];
 
         ScaledImageFactory::JobItem job;
-        while( wxMSGQUEUE_NO_ERROR == mJobPool.Receive( job ) )
+        while( wxMSGSTACK_NO_ERROR == mJobPool.Receive( job ) )
         {
             if( NULL == job.second.mImage || TestDestroy() )
                 break;
@@ -205,7 +205,7 @@ bool ScaledImageFactory::AddRect( const wxRect& rect )
     if( NULL == mCurrentCtx.mImage )
         throw std::runtime_error( "Image not set!" );
 
-    return( wxMSGQUEUE_NO_ERROR == mJobPool.Post( JobItem( rect, mCurrentCtx ) ) );
+    return( wxMSGSTACK_NO_ERROR == mJobPool.Post( JobItem( rect, mCurrentCtx ) ) );
 }
 
 bool ScaledImageFactory::GetImage( wxRect& rect, SrgbImagePtr& image )

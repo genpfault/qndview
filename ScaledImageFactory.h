@@ -50,8 +50,8 @@ private:
     Context mCurrentCtx;
 
     typedef std::pair< wxRect, Context > JobItem;
-    typedef wxMessageQueue< JobItem > JobQueueType;
-    JobQueueType mJobQueue;
+    typedef wxMessageQueue< JobItem > JobPoolType;
+    JobPoolType mJobPool;
 
     struct ResultItem
     {

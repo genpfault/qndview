@@ -72,11 +72,11 @@ public:
         (
         wxEvtHandler* eventSink,
         int id,
-        ScaledImageFactory::JobQueueType& mJobQueue,
+        ScaledImageFactory::JobPoolType& mJobPool,
         ScaledImageFactory::ResultQueueType& mResultQueue
         )
         : wxThread( wxTHREAD_JOINABLE )
-        , mEventSink( eventSink ), mEventId( id ), mJobQueue( mJobQueue ), mResultQueue( mResultQueue )
+        , mEventSink( eventSink ), mEventId( id ), mJobPool( mJobPool ), mResultQueue( mResultQueue )
     { }
 
     virtual ExitCode Entry()
@@ -85,7 +85,7 @@ public:
         auto_ptr< Resampler > resamplers[ 4 ];
 
         ScaledImageFactory::JobItem job;
-        while( wxMSGQUEUE_NO_ERROR == mJobQueue.Receive( job ) )
+        while( wxMSGSTACK_NO_ERROR == mJobPool.Receive( job ) )
         {
             if( NULL == job.second.mImage || TestDestroy() )
                 break;
@@ -122,7 +122,7 @@ public:
 private:
     wxEvtHandler* mEventSink;
     int mEventId;
-    ScaledImageFactory::JobQueueType& mJobQueue;
+    ScaledImageFactory::JobPoolType& mJobPool;
     ScaledImageFactory::ResultQueueType& mResultQueue;
 };
 
@@ -137,7 +137,7 @@ ScaledImageFactory::ScaledImageFactory( wxEvtHandler* eventSink, int id )
 
     for( size_t i = 0; i < numThreads; ++i )
     {
-        mThreads.push_back( new WorkerThread( eventSink, id, mJobQueue, mResultQueue ) );
+        mThreads.push_back( new WorkerThread( eventSink, id, mJobPool, mResultQueue ) );
     }
 
     for( wxThread*& thread : mThreads )
@@ -158,10 +158,10 @@ ScaledImageFactory::ScaledImageFactory( wxEvtHandler* eventSink, int id )
 ScaledImageFactory::~ScaledImageFactory()
 {
     // clear job queue and send down "kill" jobs
-    mJobQueue.Clear();
+    mJobPool.Clear();
     for( size_t i = 0; i < mThreads.size(); ++i )
     {
-        mJobQueue.Post( JobItem( wxRect(), Context() ) );
+        mJobPool.Post( JobItem( wxRect(), Context() ) );
     }
 
     for( wxThread* thread : mThreads )
@@ -177,7 +177,7 @@ ScaledImageFactory::~ScaledImageFactory()
 void ScaledImageFactory::SetImage( LinearImagePtr& newImage, double scale )
 {
     mCurrentCtx.mGeneration++;
-    mJobQueue.Clear();
+    mJobPool.Clear();
     mCurrentCtx.mImage = newImage;
     SetScale( scale );
 }
@@ -188,7 +188,7 @@ void ScaledImageFactory::SetScale( double newScale )
         throw std::runtime_error( "Image not set!" );
 
     mCurrentCtx.mGeneration++;
-    mJobQueue.Clear();
+    mJobPool.Clear();
 
     // regenerate contrib lists
     mCurrentCtx.mContribLists = new Resampler::ContribLists
@@ -205,9 +205,7 @@ bool ScaledImageFactory::AddRect( const wxRect& rect )
     if( NULL == mCurrentCtx.mImage )
         throw std::runtime_error( "Image not set!" );
 
-    wxMessageQueueError err;
-    err = mJobQueue.Post( JobItem( rect, mCurrentCtx ) );
-    return( wxMSGQUEUE_NO_ERROR == err );
+    return( wxMSGSTACK_NO_ERROR == mJobPool.Post( JobItem( rect, mCurrentCtx ) ) );
 }
 
 bool ScaledImageFactory::GetImage( wxRect& rect, SrgbImagePtr& image )

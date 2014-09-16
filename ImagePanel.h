@@ -2,7 +2,6 @@
 #define IMAGEPANEL_H
 
 #include <wx/wx.h>
-#include <wx/msgqueue.h>
 
 #include <memory>
 #include <map>

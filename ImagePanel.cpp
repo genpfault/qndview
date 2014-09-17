@@ -262,7 +262,7 @@ void wxImagePanel::OnPaint( wxPaintEvent& )
 
         const vector< wxRect > ret = GetCoverage
             (
-            rect.Inflate( 1.1, 1.1 ),
+            rect.Inflate( rect.width * 1.5, rect.height * 1.5 ),
             scaledRect,
             gridSize
             );

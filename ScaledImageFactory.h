@@ -39,9 +39,6 @@ public:
 private:
     friend WorkerThread;
 
-    wxEvtHandler* mEventSink;
-    int mEventId;
-
     struct Context
     {
         unsigned int mGeneration;

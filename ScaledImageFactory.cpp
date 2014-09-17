@@ -226,3 +226,8 @@ bool ScaledImageFactory::GetImage( wxRect& rect, SrgbImagePtr& image )
     image = item.mImage;
     return true;
 }
+
+void ScaledImageFactory::ClearQueue()
+{
+    mJobPool.Clear();
+}

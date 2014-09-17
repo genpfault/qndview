@@ -31,6 +31,7 @@ private:
     void OnThread( wxThreadEvent& event );
     wxPoint ClampPosition( const wxPoint& newPos );
     void ScrollToPosition( const wxPoint& newPos );
+    void QueueRect( const wxRect& rect );
 
     static const size_t TILE_SIZE = 256;   // pixels
 

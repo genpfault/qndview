@@ -35,6 +35,7 @@ public:
     void SetScale( double newScale );
     bool AddRect( const wxRect& rect );
     bool GetImage( wxRect& rect, SrgbImagePtr& image );
+    void ClearQueue();
 
 private:
     friend WorkerThread;

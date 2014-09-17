@@ -235,6 +235,22 @@ void wxImagePanel::ScrollToPosition( const wxPoint& newPos )
 }
 
 
+void wxImagePanel::QueueRect( const wxRect& rect )
+{
+    // don't queue rects we have cached
+    wxBitmapPtr bmpPtr;
+    if( mBitmapCache.get( bmpPtr, rect ) )
+        return;
+
+    // don't queue rects we've already queued
+    if( mQueuedRects.end() != mQueuedRects.find( rect ) )
+        return;
+
+    mQueuedRects.insert( rect );
+    mImageFactory.AddRect( rect );
+}
+
+
 void wxImagePanel::OnPaint( wxPaintEvent& )
 {
     wxPaintDC dc(this);
@@ -254,7 +270,7 @@ void wxImagePanel::OnPaint( wxPaintEvent& )
     const wxSize gridSize( TILE_SIZE, TILE_SIZE );
 
     // get the set of tiles we need to draw
-    set< wxRect, wxRectCmp > covered;
+    set< wxRect, wxRectCmp > updateRects;
     for( wxRegionIterator upd( GetUpdateRegion() ); upd.HaveRects(); ++upd )
     {
         wxRect rect( upd.GetRect() );
@@ -262,33 +278,36 @@ void wxImagePanel::OnPaint( wxPaintEvent& )
 
         const vector< wxRect > ret = GetCoverage
             (
-            rect.Inflate( rect.width * 1.5, rect.height * 1.5 ),
+            rect,
             scaledRect,
             gridSize
             );
-        covered.insert( ret.begin(), ret.end() );
+        updateRects.insert( ret.begin(), ret.end() );
     }
 
     dc.SetBrush( wxBrush( mStipple ) );
     dc.SetPen( *wxTRANSPARENT_PEN );
 
-    for( const wxRect& rect : covered )
+    for( const wxRect& rect : updateRects )
     {
         wxBitmapPtr bmpPtr;
-        if( !mBitmapCache.get( bmpPtr, rect ) )
-        {
-            if( mQueuedRects.end() == mQueuedRects.find( rect ) )
-            {
-                mQueuedRects.insert( rect );
-                mImageFactory.AddRect( rect );
-            }
-        }
-        else
+        if( mBitmapCache.get( bmpPtr, rect ) )
         {
             dc.DrawRectangle( rect );
             dc.DrawBitmap( *bmpPtr, rect.GetPosition() );
         }
     }
+
+    mImageFactory.ClearQueue();
+    mQueuedRects.clear();
+
+    for( const wxRect& rect : updateRects )
+        QueueRect( rect );
+
+    const wxRect viewport( wxRect( mPosition, GetSize() ) );
+    //const wxRect viewport( wxRect( mPosition, GetSize() ).Inflate( GetSize() * 0.05 ) );
+    for( const wxRect& rect : GetCoverage( viewport, scaledRect, gridSize ) )
+        QueueRect( rect );
 }
 
 

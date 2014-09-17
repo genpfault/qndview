@@ -48,20 +48,21 @@ public:
         SetStatusText("Welcome to wxWidgets!");
 
         string fileName( "test.png" );
+        wxImage image;
         bool success = false;
         {
             // bug workaround
             // http://trac.wxwidgets.org/ticket/15331
             wxLogNull logNo;
-            success = mImage.LoadFile( fileName );
+            success = image.LoadFile( fileName );
         }
 
         mLinearImage = new LinearImage
             (
-            mImage.GetWidth(),
-            mImage.GetHeight(),
-            mImage.GetData(),
-            mImage.GetAlpha()
+            image.GetWidth(),
+            image.GetHeight(),
+            image.GetData(),
+            image.GetAlpha()
             );
 
         mImagePanel->SetImage( mLinearImage );
@@ -112,7 +113,6 @@ public:
 
 private:
     wxImagePanel* mImagePanel;
-    wxImage mImage;
     wxSharedPtr< LinearImage > mLinearImage;
 
     // any class wishing to process wxWidgets events must use this macro

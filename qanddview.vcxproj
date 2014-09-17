@@ -84,6 +84,7 @@
     <ClInclude Include="LinearImage.h" />
     <ClInclude Include="LruCache.h" />
     <ClInclude Include="ScaledImageFactory.h" />
+    <ClInclude Include="wxMsgStack.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

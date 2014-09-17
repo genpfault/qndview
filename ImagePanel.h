@@ -32,7 +32,7 @@ private:
     wxPoint ClampPosition( const wxPoint& newPos );
     void ScrollToPosition( const wxPoint& newPos );
 
-    static const size_t TILE_SIZE = 512;   // pixels
+    static const size_t TILE_SIZE = 256;   // pixels
 
     wxSharedPtr< LinearImage > mImage;
 

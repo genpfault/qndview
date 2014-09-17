@@ -75,7 +75,7 @@ wxPoint ClampPosition( const wxRect& viewport, const wxRect& extent )
 
 wxImagePanel::wxImagePanel( wxWindow* parent )
     : wxWindow( parent, wxID_ANY )
-    , mBitmapCache( 128 )   // ~135MB for 128 512x512x4 byte tiles
+    , mBitmapCache( 512 )   // ~135MB for 512 256x256x4 byte tiles
     , mPosition( 0, 0 )
     , mScale( 1.0 )
     , mImageFactory( this )
@@ -262,7 +262,7 @@ void wxImagePanel::OnPaint( wxPaintEvent& )
 
         const vector< wxRect > ret = GetCoverage
             (
-            rect.Inflate( 1.1, 1.1 ),
+            rect.Inflate( rect.width * 1.5, rect.height * 1.5 ),
             scaledRect,
             gridSize
             );

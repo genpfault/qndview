@@ -7,23 +7,14 @@
 using namespace std;
 
 
-
-SrgbImagePtr GetScaledSubrect( const LinearImage& src, auto_ptr< Resampler > resamplers[ 4 ], const wxRect& rect )
+void GetScaledSubrect( LinearImage& dst, const LinearImage& src, auto_ptr< Resampler > resamplers[ 4 ], const wxPoint& pos )
 {
-    LinearImage dst
-        (
-        rect.GetWidth(),
-        rect.GetHeight(),
-        NULL,
-        ( src.GetNumChannels() == 4 ? (unsigned char*)1 : NULL )
-        );
-
     for( size_t c = 0; c < src.GetNumChannels(); ++c )
     {
         resamplers[ c ]->StartResample
             (
-            rect.x, rect.y,
-            rect.GetWidth(), rect.GetHeight()
+            pos.x, pos.y,
+            dst.GetWidth(), dst.GetHeight()
             );
     }
 
@@ -40,14 +31,10 @@ SrgbImagePtr GetScaledSubrect( const LinearImage& src, auto_ptr< Resampler > res
             bool missedLine = false;
             for( size_t c = 0; c < src.GetNumChannels(); ++c )
             {
-                const float* line = resamplers[ c ]->GetLine();
-                if( NULL == line )
+                if( !resamplers[ c ]->GetLine( dst.GetRow( c, dstY ) ) )
                 {
                     missedLine = true;
-                    break;
                 }
-
-                copy( line, line + dst.GetWidth(), dst.GetRow( c, dstY ) );
             }
 
             if( missedLine )
@@ -58,10 +45,6 @@ SrgbImagePtr GetScaledSubrect( const LinearImage& src, auto_ptr< Resampler > res
             dstY++;
         }
     }
-
-    SrgbImagePtr ret( new SrgbImage );
-    dst.GetSrgb( ret->mColor, ret->mAlpha );
-    return ret;
 }
 
 
@@ -83,6 +66,7 @@ public:
     {
         wxSharedPtr< Resampler::ContribLists > curContribLists;
         auto_ptr< Resampler > resamplers[ 4 ];
+		auto_ptr< LinearImage > dstImage;
 
         ScaledImageFactory::JobItem job;
         while( wxMSGSTACK_NO_ERROR == mJobPool.Receive( job ) )
@@ -102,15 +86,32 @@ public:
                 }
             }
 
+            // regenerate destination image if needed
+            if( NULL == dstImage.get() || 
+                dstImage->GetWidth() != static_cast< unsigned int >( rect.GetWidth() ) || 
+                dstImage->GetHeight() != static_cast< unsigned int >( rect.GetHeight() ) )
+            {
+                dstImage.reset( new LinearImage
+                    (
+                    rect.GetWidth(),
+                    rect.GetHeight(),
+                    NULL,
+                    ( ctx.mImage->GetNumChannels() == 4 ? (unsigned char*)1 : NULL )
+                    ) );
+            }
+
             ScaledImageFactory::ResultItem result;
             result.mGeneration = ctx.mGeneration;
             result.mRect = rect;
-            result.mImage = GetScaledSubrect
+            GetScaledSubrect
                 (
+                *dstImage,
                 *ctx.mImage,
                 resamplers,
-                rect
+                rect.GetPosition()
                 );
+            result.mImage = new SrgbImage;
+            dstImage->GetSrgb( result.mImage->mColor, result.mImage->mAlpha );
             mResultQueue.Post( result );
 
             wxQueueEvent( mEventSink, new wxThreadEvent( wxEVT_THREAD, mEventId ) );

@@ -255,6 +255,22 @@ void wxImagePanel::QueueRect( const wxRect& rect )
 }
 
 
+struct wxRectPointDistCmp
+{
+    wxPoint mPoint;
+    wxRectPointDistCmp( const wxPoint& pt ) : mPoint( pt ) {}
+    bool operator()( const wxRect& left, const wxRect& right ) const
+    {
+        const wxPoint leftCenter = left.GetPosition() + 0.5 * ( left.GetBottomRight() - left.GetTopLeft() );
+        const wxPoint rightCenter = right.GetPosition() + 0.5 * ( right.GetBottomRight() - right.GetTopLeft() );
+        const wxPoint leftDiff = ( leftCenter - mPoint );
+        const wxPoint rightDiff = ( rightCenter - mPoint );
+        const double leftDistSq = ( leftDiff.x * leftDiff.x + leftDiff.y * leftDiff.y );
+        const double rightDistSq = ( rightDiff.x * rightDiff.x + rightDiff.y * rightDiff.y );
+        return ( leftDistSq < rightDistSq );
+    }
+};
+
 void wxImagePanel::OnPaint( wxPaintEvent& )
 {
     wxPaintDC dc(this);
@@ -302,16 +318,15 @@ void wxImagePanel::OnPaint( wxPaintEvent& )
         }
     }
 
-    mImageFactory.ClearQueue();
-    mQueuedRects.clear();
-
     for( const wxRect& rect : updateRects )
         QueueRect( rect );
 
-    const wxRect viewport( wxRect( mPosition, GetSize() ) );
-    //const wxRect viewport( wxRect( mPosition, GetSize() ).Inflate( GetSize() * 0.05 ) );
+    const wxRect viewport( wxRect( mPosition, GetSize() ).Inflate( GetSize() * 0.1 ) );
     for( const wxRect& rect : GetCoverage( viewport, scaledRect, gridSize ) )
         QueueRect( rect );
+
+    const wxPoint center = viewport.GetPosition() + 0.5 * ( viewport.GetBottomRight() - viewport.GetTopLeft() );
+    mImageFactory.Sort( wxRectPointDistCmp( center ) );
 }
 
 

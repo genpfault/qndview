@@ -3,7 +3,7 @@
 
 #include <wx/wx.h>
 #include <wx/msgqueue.h>
-#include "wxMsgStack.h"
+#include "wxSortableMsgQueue.h"
 
 #include <utility>
 #include <vector>
@@ -37,6 +37,13 @@ public:
     bool GetImage( wxRect& rect, SrgbImagePtr& image );
     void ClearQueue();
 
+    // Sort the job queue with the given comparison functor
+    template< class Compare >
+    bool Sort( Compare comp )
+    {
+        return ( wxSORTABLEMSGQUEUE_NO_ERROR == mJobPool.Sort( JobItemCmp< Compare >( comp ) ) );
+    }
+
 private:
     friend WorkerThread;
 
@@ -49,8 +56,19 @@ private:
     Context mCurrentCtx;
 
     typedef std::pair< wxRect, Context > JobItem;
-    typedef wxMessageStack< JobItem > JobPoolType;
+    typedef wxSortableMessageQueue< JobItem > JobPoolType;
     JobPoolType mJobPool;
+
+    template< class Compare >
+    struct JobItemCmp
+    {
+        Compare mComp;
+        JobItemCmp( Compare comp ) : mComp( comp ) {}
+        bool operator()( const JobItem& left, const JobItem& right )
+        {
+            return mComp( left.first, right.first );
+        }
+    };
 
     struct ResultItem
     {

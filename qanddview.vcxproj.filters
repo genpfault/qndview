@@ -47,7 +47,7 @@
     <ClInclude Include="LruCache.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="wxMsgStack.h">
+    <ClInclude Include="wxSortableMsgQueue.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

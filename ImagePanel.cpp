@@ -198,24 +198,28 @@ void wxImagePanel::OnKeyUp( wxKeyEvent& event )
 
     switch( event.GetKeyCode() )
     {
+        // zoom in
         case '=':
         case WXK_ADD:
         case WXK_NUMPAD_ADD:
             SetScale( mScale * 1.1 );
             break;
+        // zoom out
         case '-':
         case WXK_SUBTRACT:
         case WXK_NUMPAD_SUBTRACT:
             SetScale( mScale / 1.1 );
             break;
+        // fit image to window
         case 'X':
         case WXK_NUMPAD_MULTIPLY:
             {
-                const int iMax = max( mImage->GetWidth(), mImage->GetHeight() );
-                const int wMin = min( GetSize().x, GetSize().y );
-                SetScale( wMin / (double)iMax );
+                const double scaleWidth = ( GetSize().x / static_cast< double >( mImage->GetWidth() ) );
+                const double scaleHeight = ( GetSize().y / static_cast< double >( mImage->GetHeight() ) );
+                SetScale( min( scaleWidth, scaleHeight ) );
             }
             break;
+        // zoom 1:1
         case 'Z':
         case WXK_NUMPAD_DIVIDE:
             SetScale( 1.0 );

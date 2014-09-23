@@ -330,7 +330,7 @@ void wxImagePanel::OnPaint( wxPaintEvent& )
 }
 
 
-void wxImagePanel::SetImage( wxSharedPtr< LinearImage > newImage )
+void wxImagePanel::SetImage( wxSharedPtr< wxImage > newImage )
 {
     mImage = newImage;
     mQueuedRects.clear();
@@ -361,18 +361,10 @@ void wxImagePanel::SetScale( const double newScale )
 void wxImagePanel::OnThread( wxThreadEvent& )
 {
     wxRect rect;
-    SrgbImagePtr image;
+    wxSharedPtr< wxImage > image;
     while( mImageFactory.GetImage( rect, image ) )
     {
-        wxBitmapPtr bmp
-            ( 
-            new wxBitmap
-                ( 
-                image->mAlpha.empty()
-                ? wxImage( rect.GetWidth(), rect.GetHeight(), &image->mColor[0], true )
-                : wxImage( rect.GetWidth(), rect.GetHeight(), &image->mColor[0], &image->mAlpha[0], true )
-                ) 
-            );
+        wxBitmapPtr bmp( new wxBitmap( *image ) );
         mBitmapCache.insert( rect, bmp );
 
         mQueuedRects.erase( rect );

@@ -72,18 +72,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="imageresampler\resampler.cpp" />
     <ClCompile Include="ImagePanel.cpp" />
-    <ClCompile Include="LinearImage.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ScaledImageFactory.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="imageresampler\resampler.h" />
     <ClInclude Include="ImagePanel.h" />
-    <ClInclude Include="LinearImage.h" />
     <ClInclude Include="LruCache.h" />
     <ClInclude Include="ScaledImageFactory.h" />
+    <ClInclude Include="stb_image_resize.h" />
     <ClInclude Include="wxSortableMsgQueue.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

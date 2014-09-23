@@ -9,20 +9,8 @@
 #include <vector>
 #include <list>
 
-#include "imageresampler/resampler.h"
 
-
-class LinearImage;
-typedef wxSharedPtr< LinearImage > LinearImagePtr;
-
-
-struct SrgbImage
-{
-    std::vector< unsigned char > mColor;
-    std::vector< unsigned char > mAlpha;
-};
-typedef wxSharedPtr< SrgbImage > SrgbImagePtr;
-
+typedef wxSharedPtr< wxImage > wxImagePtr;
 
 class WorkerThread;
 
@@ -31,10 +19,10 @@ class ScaledImageFactory
 public:
     ScaledImageFactory( wxEvtHandler* eventSink, int id = wxID_ANY );
     ~ScaledImageFactory();
-    void SetImage( LinearImagePtr& newImage, double scale );
+    void SetImage( wxImagePtr& newImage, double scale );
     void SetScale( double newScale );
     bool AddRect( const wxRect& rect );
-    bool GetImage( wxRect& rect, SrgbImagePtr& image );
+    bool GetImage( wxRect& rect, wxImagePtr& image );
     void ClearQueue();
 
     // Sort the job queue with the given comparison functor
@@ -50,8 +38,8 @@ private:
     struct Context
     {
         unsigned int mGeneration;
-        LinearImagePtr mImage;
-        wxSharedPtr< Resampler::ContribLists > mContribLists;
+        double mScale;
+        wxImagePtr mImage;
     };
     Context mCurrentCtx;
 
@@ -74,7 +62,7 @@ private:
     {
         unsigned int mGeneration;
         wxRect mRect;
-        SrgbImagePtr mImage;
+        wxImagePtr mImage;
     };
     typedef wxMessageQueue< ResultItem > ResultQueueType;
     ResultQueueType mResultQueue;

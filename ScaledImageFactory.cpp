@@ -2,49 +2,52 @@
 
 #include <memory>
 
-#include "LinearImage.h"
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#include "stb_image_resize.h"
 
 using namespace std;
 
 
-void GetScaledSubrect( LinearImage& dst, const LinearImage& src, auto_ptr< Resampler > resamplers[ 4 ], const wxPoint& pos )
+void GetScaledSubrect( wxImage& dst, const wxImage& src, const double scale, const wxPoint& pos )
 {
-    for( size_t c = 0; c < src.GetNumChannels(); ++c )
-    {
-        resamplers[ c ]->StartResample
-            (
-            pos.x, pos.y,
-            dst.GetWidth(), dst.GetHeight()
-            );
-    }
+    const stbir_filter filter = STBIR_FILTER_TRIANGLE;
+    const stbir_edge edge = STBIR_EDGE_CLAMP;
+    const stbir_colorspace colorspace = STBIR_COLORSPACE_SRGB;
 
-    size_t dstY = 0;
-    for( size_t y = 0; y < src.GetHeight(); ++y )
-    {
-        for( size_t c = 0; c < src.GetNumChannels(); ++c )
-        {
-            resamplers[ c ]->PutLine( src.GetRow( c, y ) );
-        }
+    stbir_resize_subpixel
+        (
+        src.GetData(), src.GetWidth(), src.GetHeight(), 0,
+        dst.GetData(), dst.GetWidth(), dst.GetHeight(), 0,
+        STBIR_TYPE_UINT8,
+        3,
+        0,
+        STBIR_ALPHA_CHANNEL_NONE,
+        edge, edge,
+        filter, filter,
+        colorspace,
+        NULL,
+        scale, scale,
+        static_cast< float >( pos.x ), static_cast< float >( pos.y )
+        );
 
-        while( true )
-        {
-            bool missedLine = false;
-            for( size_t c = 0; c < src.GetNumChannels(); ++c )
-            {
-                if( !resamplers[ c ]->GetLine( dst.GetRow( c, dstY ) ) )
-                {
-                    missedLine = true;
-                }
-            }
+    if( !src.HasAlpha() )
+        return;
 
-            if( missedLine )
-            {
-                break;
-            }
-
-            dstY++;
-        }
-    }
+    stbir_resize_subpixel
+        (
+        src.GetAlpha(), src.GetWidth(), src.GetHeight(), 0,
+        dst.GetAlpha(), dst.GetWidth(), dst.GetHeight(), 0,
+        STBIR_TYPE_UINT8,
+        1,
+        0,
+        STBIR_FLAG_ALPHA_PREMULTIPLIED,
+        edge, edge,
+        filter, filter,
+        colorspace,
+        NULL,
+        scale, scale,
+        static_cast< float >( pos.x ), static_cast< float >( pos.y )
+        );
 }
 
 
@@ -64,10 +67,6 @@ public:
 
     virtual ExitCode Entry()
     {
-        wxSharedPtr< Resampler::ContribLists > curContribLists;
-        auto_ptr< Resampler > resamplers[ 4 ];
-		auto_ptr< LinearImage > dstImage;
-
         ScaledImageFactory::JobItem job;
         while( wxSORTABLEMSGQUEUE_NO_ERROR == mJobPool.Receive( job ) )
         {
@@ -77,41 +76,23 @@ public:
             const wxRect& rect = job.first;
             ScaledImageFactory::Context& ctx = job.second;
 
-            if( curContribLists != ctx.mContribLists )
-            {
-                curContribLists = ctx.mContribLists;
-                for( size_t i = 0; i < 4; ++i )
-                {
-                    resamplers[ i ].reset( new Resampler( *curContribLists ) );
-                }
-            }
-
-            // regenerate destination image if needed
-            if( NULL == dstImage.get() || 
-                dstImage->GetWidth() != static_cast< unsigned int >( rect.GetWidth() ) || 
-                dstImage->GetHeight() != static_cast< unsigned int >( rect.GetHeight() ) )
-            {
-                dstImage.reset( new LinearImage
-                    (
-                    rect.GetWidth(),
-                    rect.GetHeight(),
-                    NULL,
-                    ( ctx.mImage->GetNumChannels() == 4 ? (unsigned char*)1 : NULL )
-                    ) );
-            }
-
             ScaledImageFactory::ResultItem result;
             result.mGeneration = ctx.mGeneration;
             result.mRect = rect;
+
+            result.mImage = new wxImage( rect.GetWidth(), rect.GetHeight(), false );
+            if( ctx.mImage->HasAlpha() )
+            {
+                result.mImage->SetAlpha( NULL );
+            }
+
             GetScaledSubrect
                 (
-                *dstImage,
+                *result.mImage,
                 *ctx.mImage,
-                resamplers,
+                ctx.mScale,
                 rect.GetPosition()
                 );
-            result.mImage = new SrgbImage;
-            dstImage->GetSrgb( result.mImage->mColor, result.mImage->mAlpha );
             mResultQueue.Post( result );
 
             wxQueueEvent( mEventSink, new wxThreadEvent( wxEVT_THREAD, mEventId ) );
@@ -173,7 +154,7 @@ ScaledImageFactory::~ScaledImageFactory()
     }
 }
 
-void ScaledImageFactory::SetImage( LinearImagePtr& newImage, double scale )
+void ScaledImageFactory::SetImage( wxImagePtr& newImage, double scale )
 {
     mCurrentCtx.mGeneration++;
     mJobPool.Clear();
@@ -187,16 +168,8 @@ void ScaledImageFactory::SetScale( double newScale )
         throw std::runtime_error( "Image not set!" );
 
     mCurrentCtx.mGeneration++;
+    mCurrentCtx.mScale = newScale;
     mJobPool.Clear();
-
-    // regenerate contrib lists
-    mCurrentCtx.mContribLists = new Resampler::ContribLists
-        (
-        mCurrentCtx.mImage->GetWidth(), 
-        mCurrentCtx.mImage->GetHeight(),
-        mCurrentCtx.mImage->GetWidth() * newScale,
-        mCurrentCtx.mImage->GetHeight() * newScale
-        );
 }
 
 bool ScaledImageFactory::AddRect( const wxRect& rect )
@@ -207,7 +180,7 @@ bool ScaledImageFactory::AddRect( const wxRect& rect )
     return( wxSORTABLEMSGQUEUE_NO_ERROR == mJobPool.Post( JobItem( rect, mCurrentCtx ) ) );
 }
 
-bool ScaledImageFactory::GetImage( wxRect& rect, SrgbImagePtr& image )
+bool ScaledImageFactory::GetImage( wxRect& rect, wxImagePtr& image )
 {
     ResultItem item;
     wxMessageQueueError err;

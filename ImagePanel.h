@@ -7,7 +7,6 @@
 #include <map>
 #include <set>
 
-#include "LinearImage.h"
 #include "ScaledImageFactory.h"
 #include "LruCache.h"
 
@@ -17,7 +16,7 @@ class wxImagePanel : public wxWindow
 public:
     wxImagePanel( wxWindow* parent );
 
-    void SetImage( wxSharedPtr< LinearImage > newImage );
+    void SetImage( wxSharedPtr< wxImage > newImage );
     void SetScale( const double newScale );
 
 private:
@@ -35,7 +34,7 @@ private:
 
     static const size_t TILE_SIZE = 256;   // pixels
 
-    wxSharedPtr< LinearImage > mImage;
+    wxSharedPtr< wxImage > mImage;
 
     // (ab)use std::pair<>'s operator<() to compare wxRects
     struct wxRectCmp

@@ -47,25 +47,17 @@ public:
         CreateStatusBar(2);
         SetStatusText("Welcome to wxWidgets!");
 
+        mImage = new wxImage();
         string fileName( "test.png" );
-        wxImage image;
         bool success = false;
         {
             // bug workaround
             // http://trac.wxwidgets.org/ticket/15331
             wxLogNull logNo;
-            success = image.LoadFile( fileName );
+            success = mImage->LoadFile( fileName );
         }
 
-        mLinearImage = new LinearImage
-            (
-            image.GetWidth(),
-            image.GetHeight(),
-            image.GetData(),
-            image.GetAlpha()
-            );
-
-        mImagePanel->SetImage( mLinearImage );
+        mImagePanel->SetImage( mImage );
 
         Bind( wxEVT_CHAR_HOOK, &MyFrame::OnCharHook, this );
     }
@@ -113,7 +105,7 @@ public:
 
 private:
     wxImagePanel* mImagePanel;
-    wxSharedPtr< LinearImage > mLinearImage;
+    wxSharedPtr< wxImage > mImage;
 
     // any class wishing to process wxWidgets events must use this macro
     wxDECLARE_EVENT_TABLE();

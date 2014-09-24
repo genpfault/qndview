@@ -1,4 +1,4 @@
-qanddview
+qndview
 =========
 
-Quick And Dirty Image Viewer
+A (q)uick a(n)d (d)irty image (view)er using wxWidgets

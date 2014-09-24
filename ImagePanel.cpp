@@ -166,6 +166,18 @@ void wxImagePanel::OnKeyDown( wxKeyEvent& event )
         case WXK_DOWN:
             Bind( wxEVT_IDLE, &wxImagePanel::OnIdle, this );
             break;
+        // zoom in
+        case '=':
+        case WXK_ADD:
+        case WXK_NUMPAD_ADD:
+            SetScale( mScale * 1.1 );
+            break;
+        // zoom out
+        case '-':
+        case WXK_SUBTRACT:
+        case WXK_NUMPAD_SUBTRACT:
+            SetScale( mScale / 1.1 );
+            break;
         default:
             break;
     }
@@ -198,18 +210,6 @@ void wxImagePanel::OnKeyUp( wxKeyEvent& event )
 
     switch( event.GetKeyCode() )
     {
-        // zoom in
-        case '=':
-        case WXK_ADD:
-        case WXK_NUMPAD_ADD:
-            SetScale( mScale * 1.1 );
-            break;
-        // zoom out
-        case '-':
-        case WXK_SUBTRACT:
-        case WXK_NUMPAD_SUBTRACT:
-            SetScale( mScale / 1.1 );
-            break;
         // fit image to window
         case 'X':
         case WXK_NUMPAD_MULTIPLY:

@@ -15,30 +15,27 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ImagePanel.cpp">
+    <ClCompile Include="src\ImagePanel.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="src\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ScaledImageFactory.cpp">
+    <ClCompile Include="src\ScaledImageFactory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ImagePanel.h">
+    <ClInclude Include="src\ImagePanel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ScaledImageFactory.h">
+    <ClInclude Include="src\LruCache.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="LruCache.h">
+    <ClInclude Include="src\ScaledImageFactory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="wxSortableMsgQueue.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="external\stb\stb_image_resize.h">
+    <ClInclude Include="src\wxSortableMsgQueue.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

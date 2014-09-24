@@ -10,6 +10,17 @@
       <Platform>Win32</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\ImagePanel.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\ScaledImageFactory.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\ImagePanel.h" />
+    <ClInclude Include="src\LruCache.h" />
+    <ClInclude Include="src\ScaledImageFactory.h" />
+    <ClInclude Include="src\wxSortableMsgQueue.h" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{AD75C700-7161-43AD-A54E-0B61FC0BF6CB}</ProjectGuid>
     <RootNamespace>qanddview</RootNamespace>
@@ -71,18 +82,6 @@
       <AdditionalLibraryDirectories>C:\projects\wx3\lib\vc_lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="ImagePanel.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="ScaledImageFactory.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="ImagePanel.h" />
-    <ClInclude Include="LruCache.h" />
-    <ClInclude Include="ScaledImageFactory.h" />
-    <ClInclude Include="external\stb\stb_image_resize.h" />
-    <ClInclude Include="wxSortableMsgQueue.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

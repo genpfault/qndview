@@ -38,7 +38,7 @@
     <ClInclude Include="wxSortableMsgQueue.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="stb_image_resize.h">
+    <ClInclude Include="external\stb\stb_image_resize.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

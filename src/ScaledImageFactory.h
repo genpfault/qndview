@@ -6,17 +6,13 @@
 #include "wxSortableMsgQueue.h"
 
 #include <utility>
-#include <vector>
 #include <list>
-
-
-typedef wxSharedPtr< wxImage > wxImagePtr;
-
-class WorkerThread;
 
 class ScaledImageFactory
 {
 public:
+    typedef wxSharedPtr< wxImage > wxImagePtr;
+
     ScaledImageFactory( wxEvtHandler* eventSink, int id = wxID_ANY );
     ~ScaledImageFactory();
     void SetImage( wxImagePtr& newImage, double scale );
@@ -33,6 +29,7 @@ public:
     }
 
 private:
+    class WorkerThread;
     friend WorkerThread;
 
     struct Context

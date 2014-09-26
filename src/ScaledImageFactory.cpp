@@ -51,7 +51,7 @@ void GetScaledSubrect( wxImage& dst, const wxImage& src, const double scale, con
 }
 
 
-class WorkerThread : public wxThread
+class ScaledImageFactory::WorkerThread : public wxThread
 {
 public:
     WorkerThread

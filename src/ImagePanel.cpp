@@ -1,5 +1,7 @@
 #include "ImagePanel.h"
 
+#include <wx/dcbuffer.h>
+
 #include <set>
 
 using namespace std;
@@ -104,7 +106,7 @@ void wxImagePanel::OnSize( wxSizeEvent& event )
     mPosition = ClampPosition( mPosition );
 
     // invalidate entire panel since we need to redraw everything
-    Refresh( true );
+    Refresh( false );
 
     // skip the event so sizers can do their thing
     event.Skip();
@@ -192,11 +194,10 @@ wxPoint wxImagePanel::ClampPosition( const wxPoint& newPos )
         return newPos;
     }
 
-    const wxSize scaledSize( mImage->GetWidth() * mScale, mImage->GetHeight() * mScale );
     return ::ClampPosition
         (
         wxRect( newPos, GetSize() ),
-        wxRect( wxPoint(0,0), scaledSize )
+        wxRect( wxPoint(0,0), mImage->GetSize() * mScale )
         );
 }
 
@@ -276,17 +277,26 @@ void wxImagePanel::OnPaint( wxPaintEvent& )
     wxPaintDC dc(this);
     //wxAutoBufferedPaintDC dc( this );
 
-    dc.SetDeviceOrigin( -mPosition.x, -mPosition.y );
-
-    dc.Clear();
-
     if( NULL == mImage )
     {
+        dc.Clear();
         return;
     }
 
-    const wxSize scaledSize( mImage->GetWidth() * mScale, mImage->GetHeight() * mScale );
-    const wxRect scaledRect( wxPoint( 0, 0 ), scaledSize );
+    // only clear where we *won't* be drawing image tiles to help prevent flicker
+    {
+        const wxRect imageRect( -mPosition, mImage->GetSize() * mScale );
+        const wxRect viewportRect( wxPoint( 0, 0 ), GetSize() );
+        wxRegion region( viewportRect );
+        region.Subtract( imageRect );
+        dc.SetDeviceClippingRegion( region );
+        dc.Clear();
+        dc.DestroyClippingRegion();
+    }
+
+    dc.SetDeviceOrigin( -mPosition.x, -mPosition.y );
+
+    const wxRect scaledRect( wxPoint( 0, 0 ), mImage->GetSize() * mScale );
     const wxSize gridSize( TILE_SIZE, TILE_SIZE );
 
     // get the set of tiles we need to draw
@@ -346,7 +356,7 @@ void wxImagePanel::SetScale( const double newScale )
     mPosition = ClampPosition( mPosition );
 
     // invalidate entire panel since we need to redraw everything
-    Refresh( true );
+    Refresh( false );
 
     if( NULL == mImage )
     {

@@ -23,7 +23,8 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{AD75C700-7161-43AD-A54E-0B61FC0BF6CB}</ProjectGuid>
-    <RootNamespace>qanddview</RootNamespace>
+    <RootNamespace>qndview</RootNamespace>
+    <ProjectName>qndview</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

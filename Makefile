@@ -1,4 +1,4 @@
-PROGRAM = qanddview
+PROGRAM = qndview
 
 INCLUDEDIRS = \
 	$(shell wx-config --cflags)\

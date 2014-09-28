@@ -1,6 +1,11 @@
 #include <wx/wx.h>
 #include <wx/dcbuffer.h>
 
+#include <wx/wfstream.h>
+#include <wx/gifdecod.h>
+#include <wx/anidecod.h>
+#include <wx/image.h>
+
 #include "ImagePanel.h"
 
 using namespace std;
@@ -17,6 +22,105 @@ enum
     // (where it is special and put into the "Apple" menu)
     Minimal_About = wxID_ABOUT
 };
+
+
+// breaks an animation into a sequence of frames
+// todo: re-write without using GUI objects (wxMemoryDC, wxBitmap)
+vector< AnimationFrame > LoadAnimation( wxAnimationDecoder& ad, wxInputStream& stream )
+{
+    vector< AnimationFrame > frames;
+
+    if( !ad.Load( stream ) )
+        return frames;
+
+    wxBitmap frame( ad.GetAnimationSize() );
+    wxMemoryDC dc( frame );
+    dc.SetBackground( wxBrush( ad.GetBackgroundColour() ) );
+    dc.Clear();
+
+    frames.resize( ad.GetFrameCount() );
+    for( unsigned int i = 0; i < frames.size(); ++i )
+    {
+        const wxRect frameRect( ad.GetFramePosition( i ), ad.GetFrameSize( i ) );
+
+        wxBitmap prvBitmap;
+        if( wxANIM_TOPREVIOUS == ad.GetDisposalMethod( i ) )
+        {
+            dc.SelectObject( wxNullBitmap );
+            prvBitmap = frame.GetSubBitmap( frameRect );
+            dc.SelectObject( frame );
+        }
+
+        wxImage img;
+        ad.ConvertToImage( i, &img );
+        dc.DrawBitmap( wxBitmap( img ), frameRect.GetPosition(), true );
+
+        dc.SelectObject( wxNullBitmap );
+        frames[ i ].mImage = new wxImage( frame.ConvertToImage() );
+        frames[ i ].mDelay = static_cast< unsigned int >( ad.GetDelay( i ) );
+        dc.SelectObject( frame );
+
+        switch( ad.GetDisposalMethod( i ) )
+        {
+            case wxANIM_DONOTREMOVE:
+            case wxANIM_UNSPECIFIED:
+                break;
+            case wxANIM_TOBACKGROUND:
+                dc.SetBrush( wxBrush( ad.GetBackgroundColour() ) );
+                dc.SetPen( *wxTRANSPARENT_PEN );
+                dc.DrawRectangle( frameRect );
+                break;
+            case wxANIM_TOPREVIOUS:
+                dc.DrawBitmap( prvBitmap, frameRect.GetPosition(), true );
+                break;
+            default:
+                break;
+        }
+    }
+
+    return frames;
+}
+
+
+// load a (possibly multi-frame) image from a stream
+vector< AnimationFrame > LoadImage( wxInputStream& stream )
+{
+    if( !stream.IsOk() )
+    {
+        return vector< AnimationFrame >();
+    }
+
+    // special-case animations
+    if( wxGIFDecoder().CanRead( stream ) )
+    {
+        wxGIFDecoder decoder;
+        return LoadAnimation( decoder, stream );
+    }
+    if( wxANIDecoder().CanRead( stream ) )
+    {
+        wxANIDecoder decoder;
+        return LoadAnimation( decoder, stream );
+    }
+
+    // generic multi-image loading
+    vector< AnimationFrame > frames( wxImage::GetImageCount( stream ) );
+    for( int i = 0; i < static_cast< int >( frames.size() ); ++i )
+    {
+        wxSharedPtr< wxImage > image( new wxImage );
+        bool success = false;
+        {
+            // bug workaround
+            // http://trac.wxwidgets.org/ticket/15331
+            wxLogNull logNo;
+            success = image->LoadFile( stream, wxBITMAP_TYPE_ANY, i );
+        }
+
+        frames[ i ].mImage = image;
+        frames[ i ].mDelay = -1;
+    }
+    return frames;
+}
+
 
 // Define a new frame type: this is going to be our main frame
 class MyFrame : public wxFrame
@@ -47,17 +151,11 @@ public:
         CreateStatusBar(2);
         SetStatusText("Welcome to wxWidgets!");
 
-        mImage = new wxImage();
-        string fileName( "test.png" );
-        bool success = false;
-        {
-            // bug workaround
-            // http://trac.wxwidgets.org/ticket/15331
-            wxLogNull logNo;
-            success = mImage->LoadFile( fileName );
-        }
+        wxFileStream fs( "test.png" );
 
-        mImagePanel->SetImage( mImage );
+        vector< AnimationFrame > frames( LoadImage( fs ) );
+
+        mImagePanel->SetImages( frames );
 
         Bind( wxEVT_CHAR_HOOK, &MyFrame::OnCharHook, this );
     }

@@ -81,21 +81,23 @@ wxImagePanel::wxImagePanel( wxWindow* parent )
     , mPosition( 0, 0 )
     , mScale( 1.0 )
     , mImageFactory( this )
+    , mAnimationTimer( this )
 {
     // for wxAutoBufferedPaintDC
     SetBackgroundStyle( wxBG_STYLE_PAINT );
 
     SetBackgroundColour( *wxBLACK );
         
-    Bind( wxEVT_SIZE        , &wxImagePanel::OnSize         , this );
-    Bind( wxEVT_PAINT       , &wxImagePanel::OnPaint        , this );
-    Bind( wxEVT_KEY_DOWN    , &wxImagePanel::OnKeyDown      , this );
-    Bind( wxEVT_KEY_UP      , &wxImagePanel::OnKeyUp        , this );
-    Bind( wxEVT_LEFT_DOWN   , &wxImagePanel::OnButtonDown   , this );
-    Bind( wxEVT_RIGHT_DOWN  , &wxImagePanel::OnButtonDown   , this );
-    Bind( wxEVT_MIDDLE_DOWN , &wxImagePanel::OnButtonDown   , this );
-    Bind( wxEVT_MOTION      , &wxImagePanel::OnMotion       , this );
-    Bind( wxEVT_THREAD      , &wxImagePanel::OnThread       , this );
+    Bind( wxEVT_SIZE        , &wxImagePanel::OnSize           , this );
+    Bind( wxEVT_PAINT       , &wxImagePanel::OnPaint          , this );
+    Bind( wxEVT_KEY_DOWN    , &wxImagePanel::OnKeyDown        , this );
+    Bind( wxEVT_KEY_UP      , &wxImagePanel::OnKeyUp          , this );
+    Bind( wxEVT_LEFT_DOWN   , &wxImagePanel::OnButtonDown     , this );
+    Bind( wxEVT_RIGHT_DOWN  , &wxImagePanel::OnButtonDown     , this );
+    Bind( wxEVT_MIDDLE_DOWN , &wxImagePanel::OnButtonDown     , this );
+    Bind( wxEVT_MOTION      , &wxImagePanel::OnMotion         , this );
+    Bind( wxEVT_THREAD      , &wxImagePanel::OnThread         , this );
+    Bind( wxEVT_TIMER       , &wxImagePanel::OnAnimationTimer , this, mAnimationTimer.GetId() );
 
     mStipple = wxBitmap( wxImage( "background.png" ) );
 }
@@ -179,6 +181,15 @@ void wxImagePanel::OnKeyDown( wxKeyEvent& event )
         case WXK_SUBTRACT:
         case WXK_NUMPAD_SUBTRACT:
             SetScale( mScale / 1.1 );
+            break;
+        case ']':
+            IncrementFrame( true );
+            break;
+        case '[':
+            IncrementFrame( false );
+            break;
+        case 'P':
+            Play( true );
             break;
         default:
             break;
@@ -340,12 +351,29 @@ void wxImagePanel::OnPaint( wxPaintEvent& )
 }
 
 
+void wxImagePanel::SetImages( const AnimationFrames& newImages )
+{
+    if( newImages.empty() )
+        return;
+
+    mFrames = newImages;
+    mCurFrame = 0;
+    SetImage( mFrames[ mCurFrame ].mImage );
+
+    if( mFrames.size() > 1 )
+    {
+        Play( false );
+    }
+}
+
 void wxImagePanel::SetImage( wxSharedPtr< wxImage > newImage )
 {
     mImage = newImage;
     mQueuedRects.clear();
+    mBitmapCache.clear();
     mImageFactory.SetImage( mImage, mScale );
     mPosition = ClampPosition( mPosition );
+    Refresh( false );
 }
 
 
@@ -381,9 +409,57 @@ void wxImagePanel::OnThread( wxThreadEvent& )
 
         const wxRect target( rect.GetPosition() - mPosition, rect.GetSize() );
         const wxRect clipped( GetRect().Intersect( target ) );
-        RefreshRect( clipped, true );
+        RefreshRect( clipped, false );
+    }
+}
+
+void wxImagePanel::Play( bool toggle )
+{
+    if( mFrames.size() <= 1 )
+    {
+        return;
     }
 
-    // todo: needed/wanted?
-    //Update();
+    if( toggle && mAnimationTimer.IsRunning() )
+    {
+        mAnimationTimer.Stop();
+    }
+    else
+    {
+        if( mFrames[ mCurFrame ].mDelay >= 0 )
+        {
+            mAnimationTimer.Stop();
+            mAnimationTimer.StartOnce( mFrames[ mCurFrame ].mDelay );
+        }
+    }
+}
+
+void wxImagePanel::IncrementFrame( bool forward )
+{
+    if( mFrames.size() <= 1 )
+    {
+        return;
+    }
+
+    if( forward )
+    {
+        mCurFrame++;
+        if( mCurFrame >= mFrames.size() )
+            mCurFrame = 0;
+    }
+    else
+    {
+        if( mCurFrame == 0 )
+            mCurFrame = mFrames.size() - 1;
+        else
+            mCurFrame--;
+    }
+
+    SetImage( mFrames[ mCurFrame ].mImage );
+}
+
+void wxImagePanel::OnAnimationTimer( wxTimerEvent& WXUNUSED( event ) )
+{
+    IncrementFrame( true );
+    Play( false );
 }

@@ -80,6 +80,8 @@ private:
     wxBitmap mStipple;
 
     wxTimer mAnimationTimer;
+
+    bool mThreadUpdate;
 };
 
 #endif

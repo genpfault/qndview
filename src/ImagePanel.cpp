@@ -82,6 +82,7 @@ wxImagePanel::wxImagePanel( wxWindow* parent )
     , mScale( 1.0 )
     , mImageFactory( this )
     , mAnimationTimer( this )
+    , mThreadUpdate( false )
 {
     // for wxAutoBufferedPaintDC
     SetBackgroundStyle( wxBG_STYLE_PAINT );
@@ -291,6 +292,7 @@ void wxImagePanel::OnPaint( wxPaintEvent& )
     if( NULL == mImage )
     {
         dc.Clear();
+        mThreadUpdate = false;
         return;
     }
 
@@ -311,7 +313,7 @@ void wxImagePanel::OnPaint( wxPaintEvent& )
     const wxSize gridSize( TILE_SIZE, TILE_SIZE );
 
     // get the set of tiles we need to draw
-    set< wxRect, wxRectCmp > updateRects;
+    set< wxRect, wxRectCmp > rectsToDraw;
     for( wxRegionIterator upd( GetUpdateRegion() ); upd.HaveRects(); ++upd )
     {
         wxRect rect( upd.GetRect() );
@@ -323,31 +325,47 @@ void wxImagePanel::OnPaint( wxPaintEvent& )
             scaledRect,
             gridSize
             );
-        updateRects.insert( ret.begin(), ret.end() );
+        rectsToDraw.insert( ret.begin(), ret.end() );
     }
 
     dc.SetBrush( wxBrush( mStipple ) );
     dc.SetPen( *wxTRANSPARENT_PEN );
 
-    for( const wxRect& rect : updateRects )
+    set< wxRect, wxRectCmp > rectsToQueue;
+    for( const wxRect& rect : rectsToDraw )
     {
         wxBitmapPtr bmpPtr;
-        if( mBitmapCache.get( bmpPtr, rect ) )
+        const bool rectInCache = ( mBitmapCache.get( bmpPtr, rect ) );
+        if( !rectInCache )
         {
-            dc.DrawRectangle( rect );
-            dc.DrawBitmap( *bmpPtr, rect.GetPosition() );
+            const bool rectQueued = ( mQueuedRects.end() != mQueuedRects.find( rect ) );
+            if( !rectQueued )
+            {
+                rectsToQueue.insert( rect );
+            }
+
+            continue;
         }
+
+        dc.DrawRectangle( rect );
+        dc.DrawBitmap( *bmpPtr, rect.GetPosition() );
+
     }
 
-    for( const wxRect& rect : updateRects )
-        QueueRect( rect );
+    if( !mThreadUpdate || !rectsToQueue.empty() )
+    {
+        for( const wxRect& rect : rectsToQueue )
+            QueueRect( rect );
 
-    const wxRect viewport( wxRect( mPosition, GetSize() ).Inflate( GetSize() * 0.1 ) );
-    for( const wxRect& rect : GetCoverage( viewport, scaledRect, gridSize ) )
-        QueueRect( rect );
+        const wxRect viewport( wxRect( mPosition, GetSize() ).Inflate( GetSize() * 0.1 ) );
+        for( const wxRect& rect : GetCoverage( viewport, scaledRect, gridSize ) )
+            QueueRect( rect );
 
-    const wxPoint center = viewport.GetPosition() + 0.5 * ( viewport.GetBottomRight() - viewport.GetTopLeft() );
-    mImageFactory.Sort( wxRectPointDistCmp( center ) );
+        const wxPoint center = viewport.GetPosition() + 0.5 * ( viewport.GetBottomRight() - viewport.GetTopLeft() );
+        mImageFactory.Sort( wxRectPointDistCmp( center ) );
+    }
+
+    mThreadUpdate = false;
 }
 
 
@@ -410,6 +428,9 @@ void wxImagePanel::OnThread( wxThreadEvent& )
         const wxRect clipped( GetRect().Intersect( target ) );
         RefreshRect( clipped, false );
     }
+
+    mThreadUpdate = true;
+    Update();
 }
 
 void wxImagePanel::Play( bool toggle )

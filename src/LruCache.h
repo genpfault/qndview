@@ -41,16 +41,19 @@ public:
         return true;
     }
 
-    bool get( V& aValue, const K& aKey )
+    bool get( V& aValue, const K& aKey, const bool updateUsage = true )
     {
         // cache-miss: did not find the key
         typename Cache::iterator it = mCache.find( aKey );
         if( it == mCache.end() )
             return false;
 
-        // cache-hit
-        // Update access record by moving accessed key to back of the list
-        mList.splice( mList.end(), mList, (it)->second.second );
+        if( updateUsage )
+        {
+            // cache-hit
+            // Update access record by moving accessed key to back of the list
+            mList.splice( mList.end(), mList, (it)->second.second );
+        }
 
         // return the retrieved value
         aValue = (it)->second.first;

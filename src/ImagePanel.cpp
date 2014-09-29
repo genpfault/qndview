@@ -255,7 +255,7 @@ void wxImagePanel::QueueRect( const wxRect& rect )
 {
     // don't queue rects we have cached
     wxBitmapPtr bmpPtr;
-    if( mBitmapCache.get( bmpPtr, rect ) )
+    if( mBitmapCache.get( bmpPtr, rect, false ) )
         return;
 
     // don't queue rects we've already queued

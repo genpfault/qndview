@@ -213,7 +213,7 @@ ScaledImageFactory::~ScaledImageFactory()
 
 void ScaledImageFactory::SetImage( wxImagePtr& newImage, double newScale )
 {
-    if( NULL == mCurrentCtx.mImage )
+    if( NULL == newImage )
         throw std::runtime_error( "Image not set!" );
 
     mCurrentCtx.mGeneration++;

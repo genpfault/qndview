@@ -10,6 +10,63 @@ using namespace std;
 
 void GetScaledSubrect( wxImage& dst, const wxImage& src, const double scale, const wxPoint& pos )
 {
+#if 0
+    const size_t srcW = static_cast< size_t >( src.GetWidth() );
+    const size_t dstW = static_cast< size_t >( dst.GetWidth() );
+    const size_t dstH = static_cast< size_t >( dst.GetHeight() );
+
+    const float scaleInv = 1.0f / scale;
+
+    // color
+    {
+        const unsigned char* srcData = src.GetData();
+        unsigned char* dstData = dst.GetData();
+
+        for( size_t dstY = 0; dstY < dstH; ++dstY )
+        {
+            unsigned char* dstRow = &dstData[ dstY * dstW * 3 ];
+    
+            const size_t srcY( ( dstY + pos.y ) * scaleInv );
+            const unsigned char* srcRow = &srcData[ srcY * srcW * 3 ];
+
+            for( size_t dstX = 0; dstX < dstW; ++dstX )
+            {
+                const size_t srcX( ( dstX + pos.x ) * scaleInv );
+                const unsigned char* srcPx = &srcRow[ srcX * 3 ];
+                dstRow[ dstX * 3 + 0 ] = srcPx[ 0 ];
+                dstRow[ dstX * 3 + 1 ] = srcPx[ 1 ];
+                dstRow[ dstX * 3 + 2 ] = srcPx[ 2 ];
+            }
+        }
+    }
+
+    if( !src.HasAlpha() )
+        return;
+
+    // alpha
+    {
+        const unsigned char* srcData = src.GetAlpha();
+        unsigned char* dstData = dst.GetAlpha();
+
+        for( size_t dstY = 0; dstY < dstH; ++dstY )
+        {
+            unsigned char* dstRow = &dstData[ dstY * dstW ];
+    
+            const size_t srcY( ( dstY + pos.y ) * scaleInv );
+            const unsigned char* srcRow = &srcData[ srcY * srcW ];
+
+            for( size_t dstX = 0; dstX < dstW; ++dstX )
+            {
+                const size_t srcX( ( dstX + pos.x ) * scaleInv );
+                const unsigned char* srcPx = &srcRow[ srcX ];
+                dstRow[ dstX + 0 ] = srcPx[ 0 ];
+            }
+        }
+    }
+
+    return;
+#endif
+
     const stbir_filter filter = STBIR_FILTER_TRIANGLE;
     const stbir_edge edge = STBIR_EDGE_CLAMP;
     const stbir_colorspace colorspace = STBIR_COLORSPACE_SRGB;

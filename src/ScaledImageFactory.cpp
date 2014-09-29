@@ -154,20 +154,13 @@ ScaledImageFactory::~ScaledImageFactory()
     }
 }
 
-void ScaledImageFactory::SetImage( wxImagePtr& newImage, double scale )
-{
-    mCurrentCtx.mGeneration++;
-    mJobPool.Clear();
-    mCurrentCtx.mImage = newImage;
-    SetScale( scale );
-}
-
-void ScaledImageFactory::SetScale( double newScale )
+void ScaledImageFactory::SetImage( wxImagePtr& newImage, double newScale )
 {
     if( NULL == mCurrentCtx.mImage )
         throw std::runtime_error( "Image not set!" );
 
     mCurrentCtx.mGeneration++;
+    mCurrentCtx.mImage = newImage;
     mCurrentCtx.mScale = newScale;
     mJobPool.Clear();
 }

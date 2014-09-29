@@ -376,7 +376,6 @@ void wxImagePanel::SetImage( wxSharedPtr< wxImage > newImage )
     Refresh( false );
 }
 
-
 void wxImagePanel::SetScale( const double newScale )
 {
     mScale = newScale;
@@ -392,7 +391,7 @@ void wxImagePanel::SetScale( const double newScale )
     }
 
     mQueuedRects.clear();
-    mImageFactory.SetScale( mScale );
+    mImageFactory.SetImage( mImage, mScale );
 }
 
 

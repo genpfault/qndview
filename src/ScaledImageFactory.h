@@ -15,8 +15,7 @@ public:
 
     ScaledImageFactory( wxEvtHandler* eventSink, int id = wxID_ANY );
     ~ScaledImageFactory();
-    void SetImage( wxImagePtr& newImage, double scale );
-    void SetScale( double newScale );
+    void SetImage( wxImagePtr& newImage, double newScale );
     bool AddRect( const wxRect& rect );
     bool GetImage( wxRect& rect, wxImagePtr& image );
     void ClearQueue();

@@ -8,123 +8,133 @@
 using namespace std;
 
 
-void GetScaledSubrect( wxImage& dst, const wxImage& src, const double scale, const wxPoint& pos )
+void GetScaledSubrect( wxImage& dst, const wxImage& src, const double scale, const wxPoint& pos, const int filter )
 {
-#if 0
-    const size_t srcW = static_cast< size_t >( src.GetWidth() );
-    const size_t dstW = static_cast< size_t >( dst.GetWidth() );
-    const size_t dstH = static_cast< size_t >( dst.GetHeight() );
-
-    const float scaleInv = 1.0f / scale;
-
-    // color
+    if( filter == -1 )
     {
-        const unsigned char* srcData = src.GetData();
-        unsigned char* dstData = dst.GetData();
+        const size_t srcW = static_cast< size_t >( src.GetWidth() );
+        const size_t dstW = static_cast< size_t >( dst.GetWidth() );
+        const size_t dstH = static_cast< size_t >( dst.GetHeight() );
 
-        for( size_t dstY = 0; dstY < dstH; ++dstY )
+        const float scaleInv = 1.0f / scale;
+
+        // color
         {
-            unsigned char* dstRow = &dstData[ dstY * dstW * 3 ];
-    
-            const size_t srcY( ( dstY + pos.y ) * scaleInv );
-            const unsigned char* srcRow = &srcData[ srcY * srcW * 3 ];
+            const unsigned char* srcData = src.GetData();
+            unsigned char* dstData = dst.GetData();
 
-            for( size_t dstX = 0; dstX < dstW; ++dstX )
+            for( size_t dstY = 0; dstY < dstH; ++dstY )
             {
-                const size_t srcX( ( dstX + pos.x ) * scaleInv );
-                const unsigned char* srcPx = &srcRow[ srcX * 3 ];
-                dstRow[ dstX * 3 + 0 ] = srcPx[ 0 ];
-                dstRow[ dstX * 3 + 1 ] = srcPx[ 1 ];
-                dstRow[ dstX * 3 + 2 ] = srcPx[ 2 ];
+                unsigned char* dstRow = &dstData[ dstY * dstW * 3 ];
+    
+                const size_t srcY( ( dstY + pos.y ) * scaleInv );
+                const unsigned char* srcRow = &srcData[ srcY * srcW * 3 ];
+
+                for( size_t dstX = 0; dstX < dstW; ++dstX )
+                {
+                    const size_t srcX( ( dstX + pos.x ) * scaleInv );
+                    const unsigned char* srcPx = &srcRow[ srcX * 3 ];
+                    dstRow[ dstX * 3 + 0 ] = srcPx[ 0 ];
+                    dstRow[ dstX * 3 + 1 ] = srcPx[ 1 ];
+                    dstRow[ dstX * 3 + 2 ] = srcPx[ 2 ];
+                }
+            }
+        }
+
+        if( !src.HasAlpha() )
+            return;
+
+        // alpha
+        {
+            const unsigned char* srcData = src.GetAlpha();
+            unsigned char* dstData = dst.GetAlpha();
+
+            for( size_t dstY = 0; dstY < dstH; ++dstY )
+            {
+                unsigned char* dstRow = &dstData[ dstY * dstW ];
+    
+                const size_t srcY( ( dstY + pos.y ) * scaleInv );
+                const unsigned char* srcRow = &srcData[ srcY * srcW ];
+
+                for( size_t dstX = 0; dstX < dstW; ++dstX )
+                {
+                    const size_t srcX( ( dstX + pos.x ) * scaleInv );
+                    const unsigned char* srcPx = &srcRow[ srcX ];
+                    dstRow[ dstX + 0 ] = srcPx[ 0 ];
+                }
             }
         }
     }
-
-    if( !src.HasAlpha() )
-        return;
-
-    // alpha
+    else
     {
-        const unsigned char* srcData = src.GetAlpha();
-        unsigned char* dstData = dst.GetAlpha();
+        const stbir_filter filter = STBIR_FILTER_TRIANGLE;
+        const stbir_edge edge = STBIR_EDGE_CLAMP;
+        const stbir_colorspace colorspace = STBIR_COLORSPACE_SRGB;
 
-        for( size_t dstY = 0; dstY < dstH; ++dstY )
-        {
-            unsigned char* dstRow = &dstData[ dstY * dstW ];
-    
-            const size_t srcY( ( dstY + pos.y ) * scaleInv );
-            const unsigned char* srcRow = &srcData[ srcY * srcW ];
+        stbir_resize_subpixel
+            (
+            src.GetData(), src.GetWidth(), src.GetHeight(), 0,
+            dst.GetData(), dst.GetWidth(), dst.GetHeight(), 0,
+            STBIR_TYPE_UINT8,
+            3,
+            0,
+            STBIR_ALPHA_CHANNEL_NONE,
+            edge, edge,
+            filter, filter,
+            colorspace,
+            NULL,
+            scale, scale,
+            static_cast< float >( pos.x ), static_cast< float >( pos.y )
+            );
 
-            for( size_t dstX = 0; dstX < dstW; ++dstX )
-            {
-                const size_t srcX( ( dstX + pos.x ) * scaleInv );
-                const unsigned char* srcPx = &srcRow[ srcX ];
-                dstRow[ dstX + 0 ] = srcPx[ 0 ];
-            }
-        }
+        if( !src.HasAlpha() )
+            return;
+
+        stbir_resize_subpixel
+            (
+            src.GetAlpha(), src.GetWidth(), src.GetHeight(), 0,
+            dst.GetAlpha(), dst.GetWidth(), dst.GetHeight(), 0,
+            STBIR_TYPE_UINT8,
+            1,
+            0,
+            STBIR_FLAG_ALPHA_PREMULTIPLIED,
+            edge, edge,
+            filter, filter,
+            colorspace,
+            NULL,
+            scale, scale,
+            static_cast< float >( pos.x ), static_cast< float >( pos.y )
+            );
     }
-
-    return;
-#endif
-
-    const stbir_filter filter = STBIR_FILTER_TRIANGLE;
-    const stbir_edge edge = STBIR_EDGE_CLAMP;
-    const stbir_colorspace colorspace = STBIR_COLORSPACE_SRGB;
-
-    stbir_resize_subpixel
-        (
-        src.GetData(), src.GetWidth(), src.GetHeight(), 0,
-        dst.GetData(), dst.GetWidth(), dst.GetHeight(), 0,
-        STBIR_TYPE_UINT8,
-        3,
-        0,
-        STBIR_ALPHA_CHANNEL_NONE,
-        edge, edge,
-        filter, filter,
-        colorspace,
-        NULL,
-        scale, scale,
-        static_cast< float >( pos.x ), static_cast< float >( pos.y )
-        );
-
-    if( !src.HasAlpha() )
-        return;
-
-    stbir_resize_subpixel
-        (
-        src.GetAlpha(), src.GetWidth(), src.GetHeight(), 0,
-        dst.GetAlpha(), dst.GetWidth(), dst.GetHeight(), 0,
-        STBIR_TYPE_UINT8,
-        1,
-        0,
-        STBIR_FLAG_ALPHA_PREMULTIPLIED,
-        edge, edge,
-        filter, filter,
-        colorspace,
-        NULL,
-        scale, scale,
-        static_cast< float >( pos.x ), static_cast< float >( pos.y )
-        );
 }
-
 
 // threadland
 wxThread::ExitCode ScaledImageFactory::Entry()
 {
     JobItem job;
-    while( wxSORTABLEMSGQUEUE_NO_ERROR == mJobPool.Receive( job ) )
+    while( wxMSGQUEUE_NO_ERROR == mJobPool.Receive( job ) )
     {
         if( NULL == job.second.mImage || wxThread::This()->TestDestroy() )
             break;
 
-        const wxRect& rect = job.first;
+        const ExtRect& rect = job.first;
         Context& ctx = job.second;
 
         ResultItem result;
         result.mGeneration = ctx.mGeneration;
         result.mRect = rect;
 
-        result.mImage = new wxImage( rect.GetWidth(), rect.GetHeight(), false );
+        // skip this rect if it isn't currently visible
+        {
+            wxCriticalSectionLocker locker( mVisibleCs );
+            if( !mVisible.Intersects( get<2>( rect ) ) )
+            {
+                mResultQueue.Post( result );
+                continue;
+            }
+        }
+
+        result.mImage = new wxImage( get<2>( rect ).GetSize(), false );
         if( ctx.mImage->HasAlpha() )
         {
             result.mImage->SetAlpha( NULL );
@@ -135,7 +145,8 @@ wxThread::ExitCode ScaledImageFactory::Entry()
             *result.mImage,
             *ctx.mImage,
             ctx.mScale,
-            rect.GetPosition()
+            get<2>( rect ).GetPosition(),
+            get<1>( rect )
             );
         mResultQueue.Post( result );
 
@@ -144,7 +155,6 @@ wxThread::ExitCode ScaledImageFactory::Entry()
 
     return static_cast< wxThread::ExitCode >( 0 );
 }
-
 
 ScaledImageFactory::ScaledImageFactory( wxEvtHandler* eventSink, int id )
     : mEventSink( eventSink ), mEventId( id )
@@ -179,7 +189,7 @@ ScaledImageFactory::~ScaledImageFactory()
     mJobPool.Clear();
     for( size_t i = 0; i < GetThreads().size(); ++i )
     {
-        mJobPool.Post( JobItem( wxRect(), Context() ) );
+        mJobPool.Post( JobItem( ExtRect(), Context() ) );
     }
 
     for( wxThread* thread : GetThreads() )
@@ -202,15 +212,15 @@ void ScaledImageFactory::SetImage( wxImagePtr& newImage, double newScale )
     mJobPool.Clear();
 }
 
-bool ScaledImageFactory::AddRect( const wxRect& rect )
+bool ScaledImageFactory::AddRect( const ExtRect& rect )
 {
     if( NULL == mCurrentCtx.mImage )
         throw std::runtime_error( "Image not set!" );
 
-    return( wxSORTABLEMSGQUEUE_NO_ERROR == mJobPool.Post( JobItem( rect, mCurrentCtx ) ) );
+    return( wxMSGQUEUE_NO_ERROR == mJobPool.Post( JobItem( rect, mCurrentCtx ) ) );
 }
 
-bool ScaledImageFactory::GetImage( wxRect& rect, wxImagePtr& image )
+bool ScaledImageFactory::GetImage( ExtRect& rect, wxImagePtr& image )
 {
     ResultItem item;
     wxMessageQueueError err;
@@ -231,7 +241,8 @@ bool ScaledImageFactory::GetImage( wxRect& rect, wxImagePtr& image )
     return true;
 }
 
-void ScaledImageFactory::ClearQueue()
+void ScaledImageFactory::SetVisibleArea( const wxRect& visible )
 {
-    mJobPool.Clear();
+    wxCriticalSectionLocker locker( mVisibleCs );
+    mVisible = visible;
 }

@@ -5,8 +5,22 @@
 #include <wx/image.h>
 #include <wx/event.h>
 #include <wx/msgqueue.h>
+#include <tuple>
+
 #include "wxSortableMsgQueue.h"
 #include "wxMultiThreadHelper.h"
+
+
+// (ab)use std::pair<>'s operator<() to compare wxRects
+inline bool operator<( const wxRect& left, const wxRect& right )
+{
+    const std::pair< int, int >  leftPair(  left.GetTop(),  left.GetLeft() );
+    const std::pair< int, int > rightPair( right.GetTop(), right.GetLeft() );
+    return ( leftPair < rightPair );
+}
+
+// frame number, filter, rect
+typedef std::tuple< size_t, int, wxRect > ExtRect;
 
 
 class ScaledImageFactory : public wxMultiThreadHelper
@@ -17,9 +31,9 @@ public:
     ScaledImageFactory( wxEvtHandler* eventSink, int id = wxID_ANY );
     ~ScaledImageFactory();
     void SetImage( wxImagePtr& newImage, double newScale );
-    bool AddRect( const wxRect& rect );
-    bool GetImage( wxRect& rect, wxImagePtr& image );
-    void ClearQueue();
+    bool AddRect( const ExtRect& rect );
+    bool GetImage( ExtRect& rect, wxImagePtr& image );
+    void SetVisibleArea( const wxRect& visible );
 
     // Sort the job queue with the given comparison functor
     template< class Compare >
@@ -39,7 +53,7 @@ private:
     };
     Context mCurrentCtx;
 
-    typedef std::pair< wxRect, Context > JobItem;
+    typedef std::pair< ExtRect, Context > JobItem;
     typedef wxSortableMessageQueue< JobItem > JobPoolType;
     JobPoolType mJobPool;
 
@@ -57,7 +71,7 @@ private:
     struct ResultItem
     {
         unsigned int mGeneration;
-        wxRect mRect;
+        ExtRect mRect;
         wxImagePtr mImage;
     };
     typedef wxMessageQueue< ResultItem > ResultQueueType;
@@ -65,6 +79,9 @@ private:
 
     wxEvtHandler* mEventSink;
     int mEventId;
+
+    wxRect mVisible;
+    wxCriticalSection mVisibleCs;
 };
 
 #endif

@@ -43,7 +43,7 @@ private:
 
     wxPoint ClampPosition( const wxPoint& newPos );
     void ScrollToPosition( const wxPoint& newPos );
-    void QueueRect( const wxRect& rect );
+    void QueueRect( const ExtRect& rect );
 
     void Play( bool pause );
     void IncrementFrame( bool forward );
@@ -54,18 +54,8 @@ private:
     AnimationFrames mFrames;
     wxSharedPtr< wxImage > mImage;
 
-    // (ab)use std::pair<>'s operator<() to compare wxRects
-    struct wxRectCmp
-    { 
-        bool operator()( const wxRect& left, const wxRect& right ) const
-        {
-            const std::pair< int, int >  leftPair(  left.GetTop(),  left.GetLeft() );
-            const std::pair< int, int > rightPair( right.GetTop(), right.GetLeft() );
-            return ( leftPair < rightPair );
-        }
-    };
     typedef wxSharedPtr< wxBitmap > wxBitmapPtr;
-    LruCache< wxRect, wxBitmapPtr, wxRectCmp > mBitmapCache;
+    LruCache< ExtRect, wxBitmapPtr > mBitmapCache;
 
     // position of the top-left of the viewport
     wxPoint mPosition;
@@ -75,7 +65,7 @@ private:
     wxPoint mLeftMouseStart;
 
     ScaledImageFactory mImageFactory;
-    std::set< wxRect, wxRectCmp > mQueuedRects;
+    std::set< ExtRect > mQueuedRects;
 
     wxBitmap mStipple;
 

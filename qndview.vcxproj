@@ -19,6 +19,7 @@
     <ClInclude Include="src\ImagePanel.h" />
     <ClInclude Include="src\LruCache.h" />
     <ClInclude Include="src\ScaledImageFactory.h" />
+    <ClInclude Include="src\wxMultiThreadHelper.h" />
     <ClInclude Include="src\wxSortableMsgQueue.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

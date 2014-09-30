@@ -108,65 +108,46 @@ void GetScaledSubrect( wxImage& dst, const wxImage& src, const double scale, con
 }
 
 
-class ScaledImageFactory::WorkerThread : public wxThread
+// threadland
+wxThread::ExitCode ScaledImageFactory::Entry()
 {
-public:
-    WorkerThread
-        (
-        wxEvtHandler* eventSink,
-        int id,
-        ScaledImageFactory::JobPoolType& mJobPool,
-        ScaledImageFactory::ResultQueueType& mResultQueue
-        )
-        : wxThread( wxTHREAD_JOINABLE )
-        , mEventSink( eventSink ), mEventId( id ), mJobPool( mJobPool ), mResultQueue( mResultQueue )
-    { }
-
-    virtual ExitCode Entry()
+    JobItem job;
+    while( wxSORTABLEMSGQUEUE_NO_ERROR == mJobPool.Receive( job ) )
     {
-        ScaledImageFactory::JobItem job;
-        while( wxSORTABLEMSGQUEUE_NO_ERROR == mJobPool.Receive( job ) )
+        if( NULL == job.second.mImage || wxThread::This()->TestDestroy() )
+            break;
+
+        const wxRect& rect = job.first;
+        Context& ctx = job.second;
+
+        ResultItem result;
+        result.mGeneration = ctx.mGeneration;
+        result.mRect = rect;
+
+        result.mImage = new wxImage( rect.GetWidth(), rect.GetHeight(), false );
+        if( ctx.mImage->HasAlpha() )
         {
-            if( NULL == job.second.mImage || TestDestroy() )
-                break;
-
-            const wxRect& rect = job.first;
-            ScaledImageFactory::Context& ctx = job.second;
-
-            ScaledImageFactory::ResultItem result;
-            result.mGeneration = ctx.mGeneration;
-            result.mRect = rect;
-
-            result.mImage = new wxImage( rect.GetWidth(), rect.GetHeight(), false );
-            if( ctx.mImage->HasAlpha() )
-            {
-                result.mImage->SetAlpha( NULL );
-            }
-
-            GetScaledSubrect
-                (
-                *result.mImage,
-                *ctx.mImage,
-                ctx.mScale,
-                rect.GetPosition()
-                );
-            mResultQueue.Post( result );
-
-            wxQueueEvent( mEventSink, new wxThreadEvent( wxEVT_THREAD, mEventId ) );
+            result.mImage->SetAlpha( NULL );
         }
 
-        return static_cast< wxThread::ExitCode >( 0 );
+        GetScaledSubrect
+            (
+            *result.mImage,
+            *ctx.mImage,
+            ctx.mScale,
+            rect.GetPosition()
+            );
+        mResultQueue.Post( result );
+
+        wxQueueEvent( mEventSink, new wxThreadEvent( wxEVT_THREAD, mEventId ) );
     }
 
-private:
-    wxEvtHandler* mEventSink;
-    int mEventId;
-    ScaledImageFactory::JobPoolType& mJobPool;
-    ScaledImageFactory::ResultQueueType& mResultQueue;
-};
+    return static_cast< wxThread::ExitCode >( 0 );
+}
 
 
 ScaledImageFactory::ScaledImageFactory( wxEvtHandler* eventSink, int id )
+    : mEventSink( eventSink ), mEventId( id )
 {
     size_t numThreads = wxThread::GetCPUCount();
     if( numThreads <= 0 )   numThreads = 1;
@@ -174,10 +155,10 @@ ScaledImageFactory::ScaledImageFactory( wxEvtHandler* eventSink, int id )
 
     for( size_t i = 0; i < numThreads; ++i )
     {
-        mThreads.push_back( new WorkerThread( eventSink, id, mJobPool, mResultQueue ) );
+        CreateThread();
     }
 
-    for( wxThread*& thread : mThreads )
+    for( wxThread*& thread : GetThreads() )
     {
         if( NULL == thread )
             continue;
@@ -196,18 +177,17 @@ ScaledImageFactory::~ScaledImageFactory()
 {
     // clear job queue and send down "kill" jobs
     mJobPool.Clear();
-    for( size_t i = 0; i < mThreads.size(); ++i )
+    for( size_t i = 0; i < GetThreads().size(); ++i )
     {
         mJobPool.Post( JobItem( wxRect(), Context() ) );
     }
 
-    for( wxThread* thread : mThreads )
+    for( wxThread* thread : GetThreads() )
     {
         if( NULL == thread )
             continue;
 
         thread->Wait();
-        delete thread;
     }
 }
 

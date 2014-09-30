@@ -1,14 +1,15 @@
 #ifndef SCALEDIMAGEFACTORY_H
 #define SCALEDIMAGEFACTORY_H
 
-#include <wx/wx.h>
+#include <wx/sharedptr.h>
+#include <wx/image.h>
+#include <wx/event.h>
 #include <wx/msgqueue.h>
 #include "wxSortableMsgQueue.h"
+#include "wxMultiThreadHelper.h"
 
-#include <utility>
-#include <list>
 
-class ScaledImageFactory
+class ScaledImageFactory : public wxMultiThreadHelper
 {
 public:
     typedef wxSharedPtr< wxImage > wxImagePtr;
@@ -28,8 +29,7 @@ public:
     }
 
 private:
-    class WorkerThread;
-    friend WorkerThread;
+    virtual wxThread::ExitCode Entry();
 
     struct Context
     {
@@ -63,7 +63,8 @@ private:
     typedef wxMessageQueue< ResultItem > ResultQueueType;
     ResultQueueType mResultQueue;
 
-    std::list< wxThread* > mThreads;
+    wxEvtHandler* mEventSink;
+    int mEventId;
 };
 
 #endif

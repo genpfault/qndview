@@ -82,7 +82,6 @@ wxImagePanel::wxImagePanel( wxWindow* parent )
     , mScale( 1.0 )
     , mImageFactory( this )
     , mAnimationTimer( this )
-    , mThreadUpdate( false )
 {
     // for wxAutoBufferedPaintDC
     SetBackgroundStyle( wxBG_STYLE_PAINT );
@@ -99,8 +98,6 @@ wxImagePanel::wxImagePanel( wxWindow* parent )
     Bind( wxEVT_MOTION      , &wxImagePanel::OnMotion         , this );
     Bind( wxEVT_THREAD      , &wxImagePanel::OnThread         , this );
     Bind( wxEVT_TIMER       , &wxImagePanel::OnAnimationTimer , this, mAnimationTimer.GetId() );
-
-    mStipple = wxBitmap( wxImage( "background.png" ) );
 }
 
 
@@ -276,7 +273,6 @@ void wxImagePanel::OnPaint( wxPaintEvent& )
     if( NULL == mImage )
     {
         dc.Clear();
-        mThreadUpdate = false;
         return;
     }
 
@@ -315,9 +311,6 @@ void wxImagePanel::OnPaint( wxPaintEvent& )
         rectsToDraw.insert( ret.begin(), ret.end() );
     }
 
-    dc.SetBrush( wxBrush( mStipple ) );
-    dc.SetPen( *wxTRANSPARENT_PEN );
-
     for( const wxRect& srcRect : rectsToDraw )
     {
         ExtRect niceRect( mCurFrame, 0, srcRect );
@@ -325,7 +318,7 @@ void wxImagePanel::OnPaint( wxPaintEvent& )
         if( !mBitmapCache.get( niceBmpPtr, niceRect ) )
         {
             const bool rectQueued = ( mQueuedRects.end() != mQueuedRects.find( niceRect ) );
-            if( !rectQueued && !mThreadUpdate )
+            if( !rectQueued )
                 QueueRect( niceRect );
         }
 
@@ -334,7 +327,7 @@ void wxImagePanel::OnPaint( wxPaintEvent& )
         if( NULL == niceBmpPtr && !mBitmapCache.get( quickBmpPtr, quickRect ) )
         {
             const bool rectQueued = ( mQueuedRects.end() != mQueuedRects.find( quickRect ) );
-            if( !rectQueued && !mThreadUpdate )
+            if( !rectQueued )
                 QueueRect( quickRect );
         }
 
@@ -346,13 +339,10 @@ void wxImagePanel::OnPaint( wxPaintEvent& )
         else
             continue;
 
-        dc.DrawRectangle( srcRect );
         dc.DrawBitmap( *toRender, srcRect.GetPosition() );
     }
 
     mImageFactory.Sort( std::less< ExtRect >() );
-
-    mThreadUpdate = false;
 }
 
 
@@ -400,6 +390,9 @@ void wxImagePanel::SetScale( const double newScale )
 
 void wxImagePanel::OnThread( wxThreadEvent& )
 {
+    wxClientDC dc( this );
+    dc.SetDeviceOrigin( -mPosition.x, -mPosition.y );
+
     ExtRect rect;
     wxSharedPtr< wxImage > image;
     while( mImageFactory.GetImage( rect, image ) )
@@ -409,18 +402,12 @@ void wxImagePanel::OnThread( wxThreadEvent& )
         if( NULL == image )
             continue;
 
-        mThreadUpdate = true;
-
         wxBitmapPtr bmp( new wxBitmap( *image ) );
         mBitmapCache.insert( rect, bmp );
 
-        const wxRect target( get<2>( rect ).GetPosition() - mPosition, get<2>( rect ).GetSize() );
-        const wxRect clipped( GetRect().Intersect( target ) );
-        RefreshRect( clipped, false );
-    }
 
-    if( mThreadUpdate )
-        Update();
+        dc.DrawBitmap( *bmp, get<2>( rect ).GetPosition() );
+    }
 }
 
 void wxImagePanel::Play( bool toggle )

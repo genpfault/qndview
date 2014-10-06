@@ -82,6 +82,8 @@ private:
 
     wxRect mVisible;
     wxCriticalSection mVisibleCs;
+
+    wxImage mStipple;
 };
 
 #endif

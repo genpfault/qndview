@@ -8,6 +8,72 @@
 using namespace std;
 
 
+// blends a foreground RGB triplet (fg) onto a background RGB triplet (bg)
+// using the given alpha value; returns the blended result
+// http://stackoverflow.com/questions/12011081/alpha-blending-2-rgba-colors-in-c/12016968#12016968
+inline void BlendRgb
+    (
+    unsigned char* dst,
+    const unsigned char* fg,
+    const unsigned char* bg,
+    const unsigned char alpha
+    )
+{
+    const unsigned int intAlpha = alpha + 1;
+    const unsigned int invAlpha = 256 - alpha;
+    for( size_t i = 0; i < 3; ++i )
+    {
+        dst[i] = ( ( intAlpha * fg[i] + invAlpha * bg[i] ) >> 8 );
+    }
+}
+
+
+// blends fg onto a repeating pattern of bg into dst
+// bg dimensions must be powers-of-two
+void BlendPattern
+    (
+    wxImage& dst,
+    const wxImage& fg,
+    const wxImage& bg
+    )
+{
+    const size_t fgW = static_cast< size_t >( fg.GetWidth() );
+    const size_t dstW = static_cast< size_t >( dst.GetWidth() );
+    const size_t dstH = static_cast< size_t >( dst.GetHeight() );
+
+    const size_t bgW = static_cast< size_t >( bg.GetWidth() );
+    const size_t bgH = static_cast< size_t >( bg.GetHeight() );
+
+    const unsigned char* fgData = fg.GetData();
+    const unsigned char* fgAlpha = fg.GetAlpha();
+    unsigned char* bgData = bg.GetData();
+    unsigned char* dstData = dst.GetData();
+
+    for( size_t y = 0; y < dstH; ++y )
+    {
+        unsigned char* dstPx = &dstData[ y * dstW * 3 ];
+
+        const unsigned char* fgPx = &fgData[ y * fgW * 3 ];
+        const unsigned char* fgAlphaPx = &fgAlpha[ y * fgW ];
+
+        const size_t bgY = ( y & ( bgH-1 ) ) * bgW * 3;
+        const unsigned char* bgRow = &bgData[ bgY ];
+
+        for( size_t x = 0; x < dstW; ++x )
+        {
+            const size_t bgX = ( x & ( bgW-1 ) ) * 3;
+            const unsigned char* bgPx = &bgRow[ bgX ];
+
+            BlendRgb( dstPx, fgPx, bgPx, *fgAlphaPx );
+
+            dstPx += 3;
+            fgPx += 3;
+            fgAlphaPx += 1;
+        }
+    }
+}
+
+
 void GetScaledSubrect( wxImage& dst, const wxImage& src, const double scale, const wxPoint& pos, const int filter )
 {
     if( filter == -1 )
@@ -134,20 +200,31 @@ wxThread::ExitCode ScaledImageFactory::Entry()
             }
         }
 
-        result.mImage = new wxImage( get<2>( rect ).GetSize(), false );
+        wxImagePtr temp( new wxImage( get<2>( rect ).GetSize(), false ) );
         if( ctx.mImage->HasAlpha() )
         {
-            result.mImage->SetAlpha( NULL );
+            temp->SetAlpha( NULL );
         }
 
         GetScaledSubrect
             (
-            *result.mImage,
+            *temp,
             *ctx.mImage,
             ctx.mScale,
             get<2>( rect ).GetPosition(),
             get<1>( rect )
             );
+
+        if( ctx.mImage->HasAlpha() )
+        {
+            result.mImage = new wxImage( get<2>( rect ).GetSize(), false );
+            BlendPattern( *result.mImage, *temp, mStipple );
+        }
+        else
+        {
+            result.mImage = temp;
+        }
+
         mResultQueue.Post( result );
 
         wxQueueEvent( mEventSink, new wxThreadEvent( wxEVT_THREAD, mEventId ) );
@@ -181,6 +258,8 @@ ScaledImageFactory::ScaledImageFactory( wxEvtHandler* eventSink, int id )
     }
 
     mCurrentCtx.mGeneration = 0;
+
+    mStipple.LoadFile( "background.png" );
 }
 
 ScaledImageFactory::~ScaledImageFactory()

@@ -67,11 +67,7 @@ private:
     ScaledImageFactory mImageFactory;
     std::set< ExtRect > mQueuedRects;
 
-    wxBitmap mStipple;
-
     wxTimer mAnimationTimer;
-
-    bool mThreadUpdate;
 };
 
 #endif

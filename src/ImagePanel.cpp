@@ -344,9 +344,32 @@ void wxImagePanel::SetImage( wxSharedPtr< wxImage > newImage )
 
 void wxImagePanel::SetScale( const double newScale )
 {
-    mScale = newScale;
     mBitmapCache.clear();
-    mPosition = ClampPosition( mPosition );
+
+    const wxSize curSize( mImage->GetSize() * mScale );
+    const wxSize newSize( mImage->GetSize() * newScale );
+    const wxSize center( GetSize() * 0.5 );
+
+    // convert current position into image-parametric 
+    // (0 to 1) coordinates at the current scale
+    wxRealPoint curParametric( mPosition + center );
+    curParametric.x /= curSize.x;
+    curParametric.y /= curSize.y;
+
+    // use parametric coords with the new scale to figure out where
+    // the old coordinates are in the new coordinate system
+    const wxRealPoint newCoords
+        (
+        curParametric.x * newSize.x,
+        curParametric.y * newSize.y
+        );
+
+    // subtract off the viewport center because mPosition is the
+    // location of the top-left corner of the viewport
+    const wxRealPoint newPoint = newCoords - center;
+
+    mScale = newScale;
+    mPosition = ClampPosition( newPoint );
 
     // invalidate entire panel since we need to redraw everything
     Refresh( false );

@@ -258,6 +258,7 @@ ScaledImageFactory::ScaledImageFactory( wxEvtHandler* eventSink, int id )
     }
 
     mCurrentCtx.mGeneration = 0;
+    mCurrentCtx.mScale = 1.0;
 
     mStipple.LoadFile( "background.png" );
 }
@@ -280,13 +281,21 @@ ScaledImageFactory::~ScaledImageFactory()
     }
 }
 
-void ScaledImageFactory::SetImage( wxImagePtr& newImage, double newScale )
+void ScaledImageFactory::SetImage( wxImagePtr& newImage )
 {
     if( NULL == newImage )
         throw std::runtime_error( "Image not set!" );
 
-    mCurrentCtx.mGeneration++;
     mCurrentCtx.mImage = newImage;
+    mJobPool.Clear();
+}
+
+void ScaledImageFactory::SetScale( double newScale )
+{
+    if( NULL == mCurrentCtx.mImage )
+        throw std::runtime_error( "Image not set!" );
+
+    mCurrentCtx.mGeneration++;
     mCurrentCtx.mScale = newScale;
     mJobPool.Clear();
 }

@@ -30,7 +30,8 @@ public:
 
     ScaledImageFactory( wxEvtHandler* eventSink, int id = wxID_ANY );
     ~ScaledImageFactory();
-    void SetImage( wxImagePtr& newImage, double newScale );
+    void SetImage( wxImagePtr& newImage );
+    void SetScale( double newScale );
     bool AddRect( const ExtRect& rect );
     bool GetImage( ExtRect& rect, wxImagePtr& image );
     void SetVisibleArea( const wxRect& visible );

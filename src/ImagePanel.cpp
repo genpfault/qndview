@@ -77,11 +77,12 @@ wxPoint ClampPosition( const wxRect& viewport, const wxRect& extent )
 
 wxImagePanel::wxImagePanel( wxWindow* parent )
     : wxWindow( parent, wxID_ANY )
-    , mBitmapCache( 512 )   // ~135MB for 512 256x256x4 byte tiles
+    , mBitmapCache( 1024 )   // ~200 MB for 1024 256x256x3 byte tiles
     , mPosition( 0, 0 )
     , mScale( 1.0 )
     , mImageFactory( this )
     , mAnimationTimer( this )
+    , mKeyboardTimer( this )
 {
     // for wxAutoBufferedPaintDC
     SetBackgroundStyle( wxBG_STYLE_PAINT );
@@ -98,6 +99,7 @@ wxImagePanel::wxImagePanel( wxWindow* parent )
     Bind( wxEVT_MOTION      , &wxImagePanel::OnMotion         , this );
     Bind( wxEVT_THREAD      , &wxImagePanel::OnThread         , this );
     Bind( wxEVT_TIMER       , &wxImagePanel::OnAnimationTimer , this, mAnimationTimer.GetId() );
+    Bind( wxEVT_TIMER       , &wxImagePanel::OnKeyboardTimer  , this, mKeyboardTimer.GetId() );
 }
 
 
@@ -135,29 +137,6 @@ void wxImagePanel::OnMotion( wxMouseEvent& event )
     }
 }
 
-
-void wxImagePanel::OnIdle( wxIdleEvent & )
-{
-    wxPoint newPos( mPosition );
-    const int step = wxGetKeyState( WXK_CONTROL ) ? 10 : 1;
-    if( wxGetKeyState( WXK_LEFT  ) )    newPos += step * wxPoint( -1,  0 );
-    if( wxGetKeyState( WXK_RIGHT ) )    newPos += step * wxPoint(  1,  0 );
-    if( wxGetKeyState( WXK_UP    ) )    newPos += step * wxPoint(  0, -1 );
-    if( wxGetKeyState( WXK_DOWN  ) )    newPos += step * wxPoint(  0,  1 );
-
-    if( newPos == mPosition )
-    {
-        Unbind( wxEVT_IDLE, &wxImagePanel::OnIdle, this );
-        return;
-    }
-
-    ScrollToPosition( newPos );
-
-    //event.RequestMore( true );
-    //wxMilliSleep( 1 );
-}
-
-
 void wxImagePanel::OnKeyDown( wxKeyEvent& event )
 {
     switch( event.GetKeyCode() )
@@ -166,7 +145,8 @@ void wxImagePanel::OnKeyDown( wxKeyEvent& event )
         case WXK_RIGHT:
         case WXK_UP:
         case WXK_DOWN:
-            Bind( wxEVT_IDLE, &wxImagePanel::OnIdle, this );
+            if( !mKeyboardTimer.IsRunning() )
+                mKeyboardTimer.Start( 10 );
             break;
         // zoom in
         case '=':
@@ -315,21 +295,13 @@ void wxImagePanel::OnPaint( wxPaintEvent& )
     {
         ExtRect niceRect( mCurFrame, 0, srcRect );
         wxBitmapPtr niceBmpPtr;
-        if( !mBitmapCache.get( niceBmpPtr, niceRect ) )
-        {
-            const bool rectQueued = ( mQueuedRects.end() != mQueuedRects.find( niceRect ) );
-            if( !rectQueued )
-                QueueRect( niceRect );
-        }
+        if( !mAnimationTimer.IsRunning() && !mBitmapCache.get( niceBmpPtr, niceRect ) )
+            QueueRect( niceRect );
 
         ExtRect quickRect( mCurFrame, -1, srcRect );
         wxBitmapPtr quickBmpPtr;
         if( NULL == niceBmpPtr && !mBitmapCache.get( quickBmpPtr, quickRect ) )
-        {
-            const bool rectQueued = ( mQueuedRects.end() != mQueuedRects.find( quickRect ) );
-            if( !rectQueued )
-                QueueRect( quickRect );
-        }
+            QueueRect( quickRect );
 
         wxBitmapPtr toRender;
         if( NULL != niceBmpPtr )
@@ -364,7 +336,8 @@ void wxImagePanel::SetImages( const AnimationFrames& newImages )
 void wxImagePanel::SetImage( wxSharedPtr< wxImage > newImage )
 {
     mImage = newImage;
-    mImageFactory.SetImage( mImage, mScale );
+    mQueuedRects.clear();
+    mImageFactory.SetImage( mImage );
     mPosition = ClampPosition( mPosition );
     Refresh( false );
 }
@@ -384,7 +357,7 @@ void wxImagePanel::SetScale( const double newScale )
     }
 
     mQueuedRects.clear();
-    mImageFactory.SetImage( mImage, mScale );
+    mImageFactory.SetScale( mScale );
 }
 
 
@@ -405,7 +378,6 @@ void wxImagePanel::OnThread( wxThreadEvent& )
         wxBitmapPtr bmp( new wxBitmap( *image ) );
         mBitmapCache.insert( rect, bmp );
 
-
         dc.DrawBitmap( *bmp, get<2>( rect ).GetPosition() );
     }
 }
@@ -420,6 +392,10 @@ void wxImagePanel::Play( bool toggle )
     if( toggle && mAnimationTimer.IsRunning() )
     {
         mAnimationTimer.Stop();
+
+        // we're stopping the animation so redraw entire window 
+        // to prompt the creation of better-filtered tiles
+        Refresh( false );
     }
     else
     {
@@ -459,4 +435,23 @@ void wxImagePanel::OnAnimationTimer( wxTimerEvent& WXUNUSED( event ) )
 {
     IncrementFrame( true );
     Play( false );
+}
+
+void wxImagePanel::OnKeyboardTimer( wxTimerEvent& WXUNUSED( event ) )
+{
+    wxPoint newPos( mPosition );
+    const int step = 10 * ( wxGetKeyState( WXK_CONTROL ) ? 10 : 1 );
+    bool down = false;
+    if( wxGetKeyState( WXK_LEFT  ) )    { newPos += step * wxPoint( -1,  0 ); down = true; }
+    if( wxGetKeyState( WXK_RIGHT ) )    { newPos += step * wxPoint(  1,  0 ); down = true; }
+    if( wxGetKeyState( WXK_UP    ) )    { newPos += step * wxPoint(  0, -1 ); down = true; }
+    if( wxGetKeyState( WXK_DOWN  ) )    { newPos += step * wxPoint(  0,  1 ); down = true; }
+
+    if( !down )
+    {
+        mKeyboardTimer.Stop();
+        return;
+    }
+
+    ScrollToPosition( newPos );
 }

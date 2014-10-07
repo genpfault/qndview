@@ -40,6 +40,7 @@ private:
     void OnPaint( wxPaintEvent& event );
     void OnThread( wxThreadEvent& event );
     void OnAnimationTimer( wxTimerEvent& event );
+    void OnKeyboardTimer( wxTimerEvent& event );
 
     wxPoint ClampPosition( const wxPoint& newPos );
     void ScrollToPosition( const wxPoint& newPos );
@@ -68,6 +69,7 @@ private:
     std::set< ExtRect > mQueuedRects;
 
     wxTimer mAnimationTimer;
+    wxTimer mKeyboardTimer;
 };
 
 #endif

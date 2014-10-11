@@ -22,6 +22,7 @@
 #include "wx/stopwatch.h"
 
 #include "wx/beforestd.h"
+#include <algorithm>
 #include <deque>
 #include "wx/afterstd.h"
 

@@ -34,6 +34,7 @@ private:
     void OnSize( wxSizeEvent& event );
     void OnButtonDown( wxMouseEvent& event );
     void OnMotion( wxMouseEvent& event );
+    void OnMouseWheel( wxMouseEvent& event );
     void OnIdle( wxIdleEvent& event );
     void OnKeyDown( wxKeyEvent& event );
     void OnKeyUp( wxKeyEvent& event );

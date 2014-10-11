@@ -88,7 +88,8 @@ wxImagePanel::wxImagePanel( wxWindow* parent )
     SetBackgroundStyle( wxBG_STYLE_PAINT );
 
     SetBackgroundColour( *wxBLACK );
-        
+
+    Bind( wxEVT_MOUSEWHEEL  , &wxImagePanel::OnMouseWheel     , this );
     Bind( wxEVT_SIZE        , &wxImagePanel::OnSize           , this );
     Bind( wxEVT_PAINT       , &wxImagePanel::OnPaint          , this );
     Bind( wxEVT_KEY_DOWN    , &wxImagePanel::OnKeyDown        , this );
@@ -111,6 +112,21 @@ void wxImagePanel::OnSize( wxSizeEvent& event )
     Refresh( false );
 
     // skip the event so sizers can do their thing
+    event.Skip();
+}
+
+void wxImagePanel::OnMouseWheel( wxMouseEvent& event )
+{
+    if( event.m_wheelRotation > 0 )
+    {
+        // zoom in
+        SetScale( mScale * 1.1 );
+    }
+    else if( event.m_wheelRotation < 0 )
+    {
+        // zoom out
+        SetScale( mScale / 1.1 );
+    }
     event.Skip();
 }
 

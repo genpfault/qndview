@@ -178,7 +178,7 @@ void GetScaledSubrect( wxImage& dst, const wxImage& src, const double scale, con
 wxThread::ExitCode ScaledImageFactory::Entry()
 {
     JobItem job;
-    while( wxMSGQUEUE_NO_ERROR == mJobPool.Receive( job ) )
+    while( wxSORTABLEMSGQUEUE_NO_ERROR == mJobPool.Receive( job ) )
     {
         if( NULL == job.second.mImage || wxThread::This()->TestDestroy() )
             break;
@@ -305,7 +305,7 @@ bool ScaledImageFactory::AddRect( const ExtRect& rect )
     if( NULL == mCurrentCtx.mImage )
         throw std::runtime_error( "Image not set!" );
 
-    return( wxMSGQUEUE_NO_ERROR == mJobPool.Post( JobItem( rect, mCurrentCtx ) ) );
+    return( wxSORTABLEMSGQUEUE_NO_ERROR == mJobPool.Post( JobItem( rect, mCurrentCtx ) ) );
 }
 
 bool ScaledImageFactory::GetImage( ExtRect& rect, wxImagePtr& image )

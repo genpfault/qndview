@@ -340,8 +340,12 @@ void wxImagePanel::SetImages( const AnimationFrames& newImages )
         return;
 
     mFrames = newImages;
+    mImageFactory.Reset();
+    mBitmapCache.clear();
+
     mCurFrame = 0;
     SetImage( mFrames[ mCurFrame ].mImage );
+    SetScale( mScale );
 
     if( mFrames.size() > 1 )
     {

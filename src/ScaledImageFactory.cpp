@@ -256,9 +256,8 @@ ScaledImageFactory::ScaledImageFactory( wxEvtHandler* eventSink, int id )
             thread = NULL;
         }
     }
-
-    mCurrentCtx.mGeneration = 0;
-    mCurrentCtx.mScale = 1.0;
+    
+    Reset();
 
     mStipple.LoadFile( "background.png" );
 }
@@ -333,4 +332,14 @@ void ScaledImageFactory::SetVisibleArea( const wxRect& visible )
 {
     wxCriticalSectionLocker locker( mVisibleCs );
     mVisible = visible;
+}
+
+void ScaledImageFactory::Reset()
+{
+    mJobPool.Clear();
+    mResultQueue.Clear();
+
+    mCurrentCtx.mGeneration++;
+    mCurrentCtx.mScale = 1.0;
+    mCurrentCtx.mImage.reset();
 }

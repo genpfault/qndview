@@ -35,6 +35,7 @@ public:
     bool AddRect( const ExtRect& rect );
     bool GetImage( ExtRect& rect, wxImagePtr& image );
     void SetVisibleArea( const wxRect& visible );
+    void Reset();
 
     // Sort the job queue with the given comparison functor
     template< class Compare >

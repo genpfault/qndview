@@ -5,24 +5,14 @@
 #include <wx/gifdecod.h>
 #include <wx/anidecod.h>
 #include <wx/image.h>
+#include <wx/cmdline.h>
+
+#include <wx/dir.h>
+#include <wx/filename.h>
 
 #include "ImagePanel.h"
 
 using namespace std;
-
-
-// IDs for the controls and the menu commands
-enum
-{
-    // menu items
-    Minimal_Quit = wxID_EXIT,
-
-    // it is important for the id corresponding to the "About" command to have
-    // this standard value as otherwise it won't be handled properly under Mac
-    // (where it is special and put into the "Apple" menu)
-    Minimal_About = wxID_ABOUT
-};
-
 
 // breaks an animation into a sequence of frames
 // todo: re-write without using GUI objects (wxMemoryDC, wxBitmap)
@@ -122,22 +112,92 @@ vector< AnimationFrame > LoadImage( wxInputStream& stream )
 }
 
 
+// slurp filenames from a directory traversal into a list of wxFileNames
+class FileNameTraverser : public wxDirTraverser
+{
+public:
+    typedef std::list< wxFileName > FileList;
+    FileNameTraverser( FileList& files ) : mFiles( files ) {}
+
+    virtual wxDirTraverseResult OnFile( const wxString& filename )
+    {
+        mFiles.push_back( wxFileName( filename ) );
+        return wxDIR_CONTINUE;
+    }
+
+    virtual wxDirTraverseResult OnDir( const wxString& WXUNUSED( dirname ) )
+    {
+        return wxDIR_CONTINUE;
+    }
+
+private:
+    FileList& mFiles;
+};
+
+
 // Define a new frame type: this is going to be our main frame
 class MyFrame : public wxFrame
 {
 public:
-    MyFrame(const wxString& title)
+    MyFrame( const wxString& title, const wxString& initialPath )
         : wxFrame( NULL, wxID_ANY, title )
         , mImagePanel( new wxImagePanel( this ) )
     {
+        // query all active handlers for their supported extension(s)
+        std::set< wxString > exts;
+        for( const auto obj : wxImage::GetHandlers() )
+        {
+            const auto handler = dynamic_cast< const wxImageHandler* >( obj );
+            exts.insert( handler->GetExtension() );
+            for( const auto& ext : handler->GetAltExtensions() )
+            {
+                exts.insert( ext );
+            }
+        }
+
+        wxFileName initialFileName;
+        if( wxDirExists( initialPath ) )
+            initialFileName.AssignDir( initialPath );
+        else
+            initialFileName.Assign( initialPath );
+
+        wxDir dir( initialFileName.GetPath() );
+        FileNameTraverser trav( mFiles );
+        dir.Traverse( trav, "", wxDIR_FILES );
+
+        // remove filenames whose extensions we don't support
+        mFiles.remove_if( [&]( const wxFileName& filename )
+        { 
+            return exts.end() == exts.find( filename.GetExt() );
+        } );
+
+        mCurFile = mFiles.begin();
+        if( !initialFileName.GetName().empty() )
+        {
+            // try to find the initial file in the file list
+            while( mCurFile != mFiles.end() && 
+                   mCurFile->GetName() != initialFileName.GetName() )
+            {
+                mCurFile++;
+            }
+
+            if( mFiles.end() == mCurFile )
+            {
+                // probably shouldn't happen
+                mCurFile = mFiles.begin();
+            }
+        }
+
         // create a menu bar
         wxMenu *fileMenu = new wxMenu;
 
         // the "About" item should be in the help menu
         wxMenu *helpMenu = new wxMenu;
-        helpMenu->Append(Minimal_About, "&About\tF1", "Show about dialog");
+        helpMenu->Append(wxID_ABOUT, "&About\tF1", "Show about dialog");
+        Bind( wxEVT_MENU, &MyFrame::OnAbout, this, wxID_ABOUT );
 
-        fileMenu->Append(Minimal_Quit, "E&xit\tAlt-X", "Quit this program");
+        fileMenu->Append(wxID_EXIT, "E&xit\tAlt-X", "Quit this program");
+        Bind( wxEVT_MENU, &MyFrame::OnQuit, this, wxID_EXIT );
 
         // now append the freshly created menu to the menu bar...
         wxMenuBar *menuBar = new wxMenuBar();
@@ -151,28 +211,63 @@ public:
         CreateStatusBar(2);
         SetStatusText("Welcome to wxWidgets!");
 
-        wxFileStream fs( "test.png" );
+        LoadCurrentFile();
 
-        vector< AnimationFrame > frames( LoadImage( fs ) );
-
-        mImagePanel->SetImages( frames );
-
-        Bind( wxEVT_CHAR_HOOK, &MyFrame::OnCharHook, this );
+        // let our frame get first crack at keyboard events
+        // so we can handle things like fullscreen toggle
+        // and changing to the next/previous image
+        mImagePanel->Bind( wxEVT_KEY_UP, &MyFrame::OnKeyUp, this );
     }
 
-    void OnCharHook( wxKeyEvent& event )
+    void LoadCurrentFile()
+    {
+        if( mFiles.end() != mCurFile && mCurFile->Exists() )
+        {
+            SetTitle( mCurFile->GetFullName() + " - QndView" );
+
+            wxFileStream fs( mCurFile->GetFullPath() );
+            vector< AnimationFrame > frames( LoadImage( fs ) );
+            mImagePanel->SetImages( frames );
+        }
+    }
+
+    void AdvanceFile( bool forward = true )
+    {
+        if( forward )
+        {
+            mCurFile++;
+            if( mFiles.end() == mCurFile )
+                mCurFile = mFiles.begin();
+        }
+        else
+        {
+            if( mFiles.begin() == mCurFile )
+                mCurFile = mFiles.end();
+            mCurFile--;
+        }
+
+        LoadCurrentFile();
+    }
+
+    void OnKeyUp( wxKeyEvent& event )
     {
         switch( event.GetKeyCode() )
         {
             case 'F':
                 // toggle fullscreen
                 ShowFullScreen( !IsFullScreen() );
-                return;
+                break;
+            case WXK_PAGEUP:
+                AdvanceFile( false );
+                break;
+            case WXK_PAGEDOWN:
+                AdvanceFile( true );
                 break;
             default:
+                // we didn't handle this event so let downstream handlers try
+                event.Skip();
                 break;
         }
-        event.Skip();
     }
 
     // event handlers (these functions should _not_ be virtual)
@@ -203,25 +298,41 @@ public:
 
 private:
     wxImagePanel* mImagePanel;
-    wxSharedPtr< wxImage > mImage;
 
-    // any class wishing to process wxWidgets events must use this macro
-    wxDECLARE_EVENT_TABLE();
+    typedef std::list< wxFileName > FileList;
+    FileList mFiles;
+    FileList::iterator mCurFile;
 };
-
-// the event tables connect the wxWidgets events with the functions (event
-// handlers) which process them. It can be also done at run-time, but for the
-// simple menu events like this the static method is much simpler.
-wxBEGIN_EVENT_TABLE(MyFrame, wxFrame)
-    EVT_MENU(Minimal_Quit,  MyFrame::OnQuit)
-    EVT_MENU(Minimal_About, MyFrame::OnAbout)
-wxEND_EVENT_TABLE()
 
 
 // Define a new application type, each program should derive a class from wxApp
 class MyApp : public wxApp
 {
 public:
+    MyApp() : mInitialPath( wxGetCwd() ) { }
+
+    virtual void OnInitCmdLine( wxCmdLineParser& parser )
+    {
+        wxApp::OnInitCmdLine( parser );
+        parser.AddParam
+            (
+            "File or directory to display",
+            wxCMD_LINE_VAL_STRING,
+            wxCMD_LINE_PARAM_OPTIONAL
+            );
+    }
+
+    virtual bool OnCmdLineParsed( wxCmdLineParser& parser )
+    {
+        if( parser.GetParamCount() == 1 )
+        {
+            // single argument, either a file or a directory
+            mInitialPath = parser.GetParam( 0 );
+        }
+
+        return wxApp::OnCmdLineParsed( parser );
+    }
+
     // this one is called on application startup and is a good place for the app
     // initialization (doing it here and not in the ctor allows to have an error
     // return: if OnInit() returns false, the application terminates)
@@ -237,7 +348,7 @@ public:
         wxInitAllImageHandlers();
 
         // create the main application window
-        MyFrame *frame = new MyFrame("Minimal wxWidgets App");
+        MyFrame *frame = new MyFrame( "QndView", mInitialPath );
 
         // and show it (the frames, unlike simple controls, are not shown when
         // created initially)
@@ -248,6 +359,8 @@ public:
         // application would exit immediately.
         return true;
     }
+
+    wxString mInitialPath;
 };
 
 // Create a new application object: this macro will allow wxWidgets to create

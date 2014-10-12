@@ -10,7 +10,7 @@ LIBDIRS = \
 LIBS = \
 	$(shell wx-config --libs)
 
-CXXSOURCES = src/ImagePanel.cpp  src/main.cpp  src/ScaledImageFactory.cpp imageresampler/resampler.cpp
+CXXSOURCES = src/ImagePanel.cpp  src/main.cpp  src/ScaledImageFactory.cpp
 CXXOBJECTS = $(CXXSOURCES:.cpp=.o)
 CXXFLAGS = $(INCLUDEDIRS) -std=c++0x -Wall -Wextra -O3 -march=native -Iexternal
 CXX = g++
@@ -31,4 +31,4 @@ $(PROGRAM): $(CXXOBJECTS)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 clean:
-	$(RM) -f $(CXXOBJECTS) $(PROGRAM)
+	$(RM) -f $(CXXOBJECTS) $(PROGRAM) .depend

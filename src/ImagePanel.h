@@ -23,12 +23,28 @@ typedef std::vector< AnimationFrame > AnimationFrames;
 class wxImagePanel : public wxWindow
 {
 public:
+    struct Zoom
+    {
+        enum Type
+        {
+            In,
+            Out,
+            Previous,
+            Actual,
+            FitBoth,
+            FitWidth,
+            FitHeight,
+            //FitAuto,
+        };
+    };
+
     wxImagePanel( wxWindow* parent );
 
     void SetImages( const AnimationFrames& newImages );
-    void SetScale( const double newScale );
+    void SetZoomType( const Zoom::Type zoomType );
 
 private:
+    void SetScale( const double newScale );
     void SetImage( wxSharedPtr< wxImage > newImage );
 
     void OnSize( wxSizeEvent& event );
@@ -71,6 +87,8 @@ private:
 
     wxTimer mAnimationTimer;
     wxTimer mKeyboardTimer;
+
+    Zoom::Type mZoomType;
 };
 
 #endif

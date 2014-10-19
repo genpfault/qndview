@@ -83,6 +83,7 @@ wxImagePanel::wxImagePanel( wxWindow* parent )
     , mImageFactory( this )
     , mAnimationTimer( this )
     , mKeyboardTimer( this )
+    , mZoomType( Zoom::Actual )
 {
     // for wxAutoBufferedPaintDC
     SetBackgroundStyle( wxBG_STYLE_PAINT );
@@ -120,12 +121,12 @@ void wxImagePanel::OnMouseWheel( wxMouseEvent& event )
     if( event.m_wheelRotation > 0 )
     {
         // zoom in
-        SetScale( mScale * 1.1 );
+        SetZoomType( Zoom::In );
     }
     else if( event.m_wheelRotation < 0 )
     {
         // zoom out
-        SetScale( mScale / 1.1 );
+        SetZoomType( Zoom::Out );
     }
     event.Skip();
 }
@@ -168,13 +169,13 @@ void wxImagePanel::OnKeyDown( wxKeyEvent& event )
         case '=':
         case WXK_ADD:
         case WXK_NUMPAD_ADD:
-            SetScale( mScale * 1.1 );
+            SetZoomType( Zoom::In );
             break;
         // zoom out
         case '-':
         case WXK_SUBTRACT:
         case WXK_NUMPAD_SUBTRACT:
-            SetScale( mScale / 1.1 );
+            SetZoomType( Zoom::Out );
             break;
         case ']':
             IncrementFrame( true );
@@ -216,19 +217,19 @@ void wxImagePanel::OnKeyUp( wxKeyEvent& event )
 
     switch( event.GetKeyCode() )
     {
-        // fit image to window
         case 'X':
         case WXK_NUMPAD_MULTIPLY:
-            {
-                const double scaleWidth = ( GetSize().x / static_cast< double >( mImage->GetWidth() ) );
-                const double scaleHeight = ( GetSize().y / static_cast< double >( mImage->GetHeight() ) );
-                SetScale( min( scaleWidth, scaleHeight ) );
-            }
+            SetZoomType( Zoom::FitBoth );
             break;
-        // zoom 1:1
         case 'Z':
         case WXK_NUMPAD_DIVIDE:
-            SetScale( 1.0 );
+            SetZoomType( Zoom::Actual );
+            break;
+        case 'W':
+            SetZoomType( Zoom::FitWidth );
+            break;
+        case 'H':
+            SetZoomType( Zoom::FitHeight );
             break;
         default:
             break;
@@ -345,7 +346,8 @@ void wxImagePanel::SetImages( const AnimationFrames& newImages )
 
     mCurFrame = 0;
     SetImage( mFrames[ mCurFrame ].mImage );
-    SetScale( mScale );
+    SetZoomType( mZoomType );
+    mPosition = ClampPosition( wxPoint( 0, 0 ) );
 
     if( mFrames.size() > 1 )
     {
@@ -390,9 +392,6 @@ void wxImagePanel::SetScale( const double newScale )
 
     mScale = newScale;
     mPosition = ClampPosition( newPoint );
-
-    // invalidate entire panel since we need to redraw everything
-    Refresh( false );
 
     if( NULL == mImage )
     {
@@ -497,4 +496,52 @@ void wxImagePanel::OnKeyboardTimer( wxTimerEvent& WXUNUSED( event ) )
     }
 
     ScrollToPosition( newPos );
+}
+
+void wxImagePanel::SetZoomType( const Zoom::Type zoomType )
+{
+    mZoomType = zoomType;
+
+    switch( mZoomType )
+    {
+    case Zoom::In:
+        SetScale( mScale * 1.1 );
+        mZoomType = Zoom::Previous;
+        break;
+    case Zoom::Out:
+        SetScale( mScale / 1.1 );
+        mZoomType = Zoom::Previous;
+        break;
+    default:
+    case Zoom::Previous:
+        SetScale( mScale );
+        break;
+    case Zoom::Actual:
+        SetScale( 1.0 );
+        break;
+    case Zoom::FitBoth:
+        if( NULL != mImage )
+        {
+            const double scaleWidth = ( GetSize().x / static_cast< double >( mImage->GetWidth() ) );
+            const double scaleHeight = ( GetSize().y / static_cast< double >( mImage->GetHeight() ) );
+            SetScale( min( scaleWidth, scaleHeight ) );
+        }
+        break;
+    case Zoom::FitWidth:
+        if( NULL != mImage )
+        {
+            const double scaleWidth = ( GetSize().x / static_cast< double >( mImage->GetWidth() ) );
+            SetScale( scaleWidth );
+        }
+        break;
+    case Zoom::FitHeight:
+        if( NULL != mImage )
+        {
+            const double scaleHeight = ( GetSize().y / static_cast< double >( mImage->GetHeight() ) );
+            SetScale( scaleHeight );
+        }
+        break;
+    }
+
+    Refresh( false );
 }

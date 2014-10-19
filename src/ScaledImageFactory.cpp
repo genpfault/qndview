@@ -276,7 +276,8 @@ ScaledImageFactory::ScaledImageFactory( wxEvtHandler* eventSink, int id )
     
     Reset();
 
-    mStipple.LoadFile( wxMemoryInputStream( background_png, sizeof( background_png ) ) );
+    wxMemoryInputStream memStream( background_png, sizeof( background_png ) );
+    mStipple.LoadFile( memStream );
 }
 
 ScaledImageFactory::~ScaledImageFactory()

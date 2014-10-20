@@ -102,6 +102,11 @@ wxImagePanel::wxImagePanel( wxWindow* parent )
     Bind( wxEVT_THREAD      , &wxImagePanel::OnThread         , this );
     Bind( wxEVT_TIMER       , &wxImagePanel::OnAnimationTimer , this, mAnimationTimer.GetId() );
     Bind( wxEVT_TIMER       , &wxImagePanel::OnKeyboardTimer  , this, mKeyboardTimer.GetId() );
+
+    AnimationFrames frames( 1 );
+    frames[ 0 ].mImage = new wxImage( 1, 1, true );
+    frames[ 0 ].mDelay = -1;
+    SetImages( frames );
 }
 
 
@@ -195,11 +200,6 @@ void wxImagePanel::OnKeyDown( wxKeyEvent& event )
 
 wxPoint wxImagePanel::ClampPosition( const wxPoint& newPos )
 {
-    if( NULL == mImage )
-    {
-        return newPos;
-    }
-
     return ::ClampPosition
         (
         wxRect( newPos, GetSize() ),
@@ -210,11 +210,6 @@ wxPoint wxImagePanel::ClampPosition( const wxPoint& newPos )
 
 void wxImagePanel::OnKeyUp( wxKeyEvent& event )
 {
-    if( NULL == mImage )
-    {
-        return;
-    }
-
     switch( event.GetKeyCode() )
     {
         case 'X':
@@ -266,12 +261,6 @@ void wxImagePanel::OnPaint( wxPaintEvent& )
 {
     wxPaintDC dc(this);
     //wxAutoBufferedPaintDC dc( this );
-
-    if( NULL == mImage )
-    {
-        dc.Clear();
-        return;
-    }
 
     const wxRect viewport( wxRect( mPosition, GetSize() ).Inflate( GetSize() * 0.1 ) );
     mImageFactory.SetVisibleArea( viewport );
@@ -393,11 +382,6 @@ void wxImagePanel::SetScale( const double newScale )
     mScale = newScale;
     mPosition = ClampPosition( newPoint );
 
-    if( NULL == mImage )
-    {
-        return;
-    }
-
     mQueuedRects.clear();
     mImageFactory.SetScale( mScale );
 }
@@ -413,9 +397,6 @@ void wxImagePanel::OnThread( wxThreadEvent& )
     while( mImageFactory.GetImage( rect, image ) )
     {
         mQueuedRects.erase( rect );
-
-        if( NULL == image )
-            continue;
 
         wxBitmapPtr bmp( new wxBitmap( *image ) );
         mBitmapCache.insert( rect, bmp );
@@ -502,6 +483,9 @@ void wxImagePanel::SetZoomType( const Zoom::Type zoomType )
 {
     mZoomType = zoomType;
 
+    const double scaleWidth = ( GetSize().x / static_cast< double >( mImage->GetWidth() ) );
+    const double scaleHeight = ( GetSize().y / static_cast< double >( mImage->GetHeight() ) );
+
     switch( mZoomType )
     {
     case Zoom::In:
@@ -520,26 +504,13 @@ void wxImagePanel::SetZoomType( const Zoom::Type zoomType )
         SetScale( 1.0 );
         break;
     case Zoom::FitBoth:
-        if( NULL != mImage )
-        {
-            const double scaleWidth = ( GetSize().x / static_cast< double >( mImage->GetWidth() ) );
-            const double scaleHeight = ( GetSize().y / static_cast< double >( mImage->GetHeight() ) );
-            SetScale( min( scaleWidth, scaleHeight ) );
-        }
+        SetScale( min( scaleWidth, scaleHeight ) );
         break;
     case Zoom::FitWidth:
-        if( NULL != mImage )
-        {
-            const double scaleWidth = ( GetSize().x / static_cast< double >( mImage->GetWidth() ) );
-            SetScale( scaleWidth );
-        }
+        SetScale( scaleWidth );
         break;
     case Zoom::FitHeight:
-        if( NULL != mImage )
-        {
-            const double scaleHeight = ( GetSize().y / static_cast< double >( mImage->GetHeight() ) );
-            SetScale( scaleHeight );
-        }
+        SetScale( scaleHeight );
         break;
     }
 
